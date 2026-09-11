@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Your committees" %}{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-6">
+  <div>
+    <p class="text-sm text-[#556070]">
+      {{ user.salutation }} {{ user.full_name }} · {{ user.get_designation_display }}{% if user.department %}, {{ user.department.name }}{% endif %}
+    </p>
+    <h1 class="mt-1 text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Your committees" %}</h1>
+  </div>
+  <p class="flex items-baseline gap-3">
+    <span class="text-6xl font-bold leading-none tabular-nums">{{ active|length }}</span>
+    <span class="text-[#3A4453]">{% blocktranslate count counter=active|length %}active committee{% plural %}active committees{% endblocktranslate %}</span>
+  </p>
+</div>
+
+<section class="mt-10" aria-labelledby="held-heading">
+  <h2 id="held-heading" class="text-lg font-semibold">{% translate "Held now" %}</h2>
+  {% if active %}
+  <table class="register mt-3">
+    <thead>
+      <tr>
+        <th scope="col">{% translate "Committee" %}</th>
+        <th scope="col">{% translate "Your role" %}</th>
+        <th scope="col">{% translate "Since" %}</th>
+        <th scope="col">{% translate "Order" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for assignment in active %}
+      <tr>
+        <td data-label="{% translate 'Committee' %}">
+          <span class="font-semibold">{{ assignment.committee.name }}</span>
+          <span class="text-sm text-[#556070]">{{ assignment.committee.code }}</span>
+        </td>
+        <td data-label="{% translate 'Your role' %}">{{ assignment.get_role_display }}</td>
+        <td data-label="{% translate 'Since' %}" class="tabular-nums">{{ assignment.start_date|date:"j M Y" }}</td>
+        <td data-label="{% translate 'Order' %}" class="tabular-nums">{{ assignment.issuing_order.order_no }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="mt-3 max-w-2xl border-l-4 border-[#CBD2DB] bg-white px-4 py-3 text-[#3A4453]">
+    {% translate "You currently hold no committees. Assignments issued by the Principal will appear here." %}
+  </p>
+  {% endif %}
+</section>
+
+<section class="mt-12" aria-labelledby="past-heading">
+  {% if past %}
+  <details>
+    <summary class="cursor-pointer text-lg font-semibold">
+      <span id="past-heading">{% translate "Past committees" %}</span>
+      <span class="font-normal tabular-nums text-[#556070]">({{ past|length }})</span>
+    </summary>
+    <table class="register mt-3">
+      <thead>
+        <tr>
+          <th scope="col">{% translate "Committee" %}</th>
+          <th scope="col">{% translate "Your role" %}</th>
+          <th scope="col">{% translate "Held" %}</th>
+          <th scope="col">{% translate "Status" %}</th>
+          <th scope="col">{% translate "Order" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for assignment in past %}
+        <tr>
+          <td data-label="{% translate 'Committee' %}">
+            <span class="font-semibold">{{ assignment.committee.name }}</span>
+            <span class="text-sm text-[#556070]">{{ assignment.committee.code }}</span>
+          </td>
+          <td data-label="{% translate 'Your role' %}">{{ assignment.get_role_display }}</td>
+          <td data-label="{% translate 'Held' %}" class="tabular-nums">
+            {{ assignment.start_date|date:"j M Y" }} – {% if assignment.end_date %}{{ assignment.end_date|date:"j M Y" }}{% else %}{% translate "not recorded" %}{% endif %}
+          </td>
+          <td data-label="{% translate 'Status' %}">
+            {% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}
+            {% if assignment.superseded_by %}
+            <span class="mt-1 block text-sm text-[#556070]">{% blocktranslate with name=assignment.superseded_by.faculty.full_name %}Handed to {{ name }}{% endblocktranslate %}</span>
+            {% endif %}
+          </td>
+          <td data-label="{% translate 'Order' %}" class="tabular-nums">{{ assignment.issuing_order.order_no }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% else %}
+  <h2 id="past-heading" class="text-lg font-semibold">{% translate "Past committees" %}</h2>
+  <p class="mt-3 text-[#3A4453]">{% translate "No past committees yet. When a committee you hold is handed over or ends, it will be listed here." %}</p>
+  {% endif %}
+</section>
+{% endblock %}

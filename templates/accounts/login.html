@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Sign in" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-md">
+  <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Sign in" %}</h1>
+  <p class="mt-2 text-[#3A4453]">{% translate "Use the email address and password issued by the Principal’s office." %}</p>
+
+  {% if form.non_field_errors %}
+  <div class="message message-error mt-6" role="alert">
+    {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" action="{% url 'accounts:login' %}" class="mt-6 space-y-5">
+    {% csrf_token %}
+    <div>
+      <label for="id_username" class="block font-medium">{% translate "Email address" %}</label>
+      <input id="id_username" name="username" type="email" class="field mt-1"
+             autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus
+             value="{{ form.username.value|default_if_none:'' }}"
+             {% if form.username.errors %}aria-invalid="true" aria-describedby="username-error"{% endif %}>
+      {% if form.username.errors %}<p id="username-error" class="error-text mt-1 text-sm">{{ form.username.errors|join:" " }}</p>{% endif %}
+    </div>
+    <div>
+      <label for="id_password" class="block font-medium">{% translate "Password" %}</label>
+      <input id="id_password" name="password" type="password" class="field mt-1"
+             autocomplete="current-password" required
+             {% if form.password.errors %}aria-invalid="true" aria-describedby="password-error"{% endif %}>
+      {% if form.password.errors %}<p id="password-error" class="error-text mt-1 text-sm">{{ form.password.errors|join:" " }}</p>{% endif %}
+    </div>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit" class="btn-primary">{% translate "Sign in" %}</button>
+  </form>
+
+  {% if demo_mode %}
+  <div class="mt-10 border-t border-[#CBD2DB] pt-5 text-sm text-[#3A4453]">
+    <p class="font-semibold text-[#1B2330]">{% translate "Demonstration accounts" %}</p>
+    <p class="mt-1">
+      {% blocktranslate trimmed %}
+        Sign in as <span class="font-medium">principal@gpbhuj-demo.local</span>, or as a
+        faculty member such as <span class="font-medium">kiran.vasava@gpbhuj-demo.local</span>.
+        Every demonstration account uses the password <span class="font-medium">demo1234</span>.
+      {% endblocktranslate %}
+    </p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

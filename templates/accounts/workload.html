@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Faculty workload" %}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Faculty workload" %}</h1>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "Active committees held by each member of staff, highest first." %}</p>
+
+{% if staff %}
+<table class="register mt-6">
+  <thead>
+    <tr>
+      <th scope="col">{% translate "Faculty" %}</th>
+      <th scope="col">{% translate "Department" %}</th>
+      <th scope="col">{% translate "Committees held" %}</th>
+      <th scope="col" class="num">{% translate "Active" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for person in staff %}
+    <tr>
+      <td data-label="{% translate 'Faculty' %}">
+        <span class="font-semibold">{{ person.salutation }} {{ person.full_name }}</span>
+        <span class="block text-sm text-[#556070]">{{ person.get_designation_display }}</span>
+      </td>
+      <td data-label="{% translate 'Department' %}">{{ person.department.name|default:"—" }}</td>
+      <td data-label="{% translate 'Committees held' %}" class="text-sm">
+        {% for assignment in person.held %}{{ assignment.committee.name }}{% if assignment.role == "CONVENER" %} <span class="text-[#556070]">({% translate "convener" %})</span>{% endif %}{% if not forloop.last %}; {% endif %}{% empty %}<span class="text-[#556070]">{% translate "None" %}</span>{% endfor %}
+      </td>
+      <td data-label="{% translate 'Active' %}" class="num text-lg font-semibold">{{ person.active_count }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="mt-6 max-w-2xl border-l-4 border-[#CBD2DB] bg-white px-4 py-3 text-[#3A4453]">
+  {% translate "No active staff records yet. Faculty added by the Principal’s office will appear here." %}
+</p>
+{% endif %}
+{% endblock %}

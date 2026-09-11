@@ -33,6 +33,18 @@ class AssignmentQuerySet(ProtectedRecordQuerySet):
             .order_by("committee__name", "role", "faculty__full_name")
         )
 
+    def matching(self, text):
+        """Filter by committee name or code, faculty name, or department name or code."""
+        if not text:
+            return self
+        return self.filter(
+            Q(committee__name__icontains=text)
+            | Q(committee__code__iexact=text)
+            | Q(faculty__full_name__icontains=text)
+            | Q(faculty__department__name__icontains=text)
+            | Q(faculty__department__code__iexact=text)
+        )
+
 
 class Assignment(ProtectedRecord):
     """

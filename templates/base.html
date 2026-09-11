@@ -19,6 +19,7 @@
         ground  #F5F6F8  page background
         action  #1D4E89  actions only, never decoration
         history #7A5A1F  superseded / past states, always with a text label
+        error   #A3261B  validation and sign-in errors
     */
     body {
       font-family: "IBM Plex Sans", "IBM Plex Sans Gujarati", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -27,6 +28,65 @@
       outline: 3px solid #1D4E89;
       outline-offset: 2px;
     }
+
+    .link { color: #1D4E89; text-decoration: underline; text-underline-offset: 3px; }
+    .link:hover { text-decoration-thickness: 2px; }
+
+    .btn-primary {
+      display: inline-block; border-radius: 0.25rem; background: #1D4E89; color: #fff;
+      font-weight: 600; padding: 0.625rem 1.25rem; line-height: 1.5rem;
+    }
+    .btn-primary:hover { background: #173F6F; }
+
+    .field {
+      display: block; width: 100%; border: 1px solid #6B7584; border-radius: 0.25rem;
+      background: #fff; padding: 0.5rem 0.75rem; font-size: 1rem; line-height: 1.5rem;
+    }
+    .field[aria-invalid="true"] { border-color: #A3261B; }
+    .error-text { color: #A3261B; }
+
+    .nav-link {
+      display: inline-block; padding: 0.625rem 0; color: #3A4453;
+      border-bottom: 3px solid transparent;
+    }
+    .nav-link:hover { color: #1B2330; }
+    .nav-link[aria-current="page"] { color: #1B2330; font-weight: 600; border-bottom-color: #1B2330; }
+
+    .message { border-left: 4px solid #1B2330; background: #fff; padding: 0.75rem 1rem; }
+    .message-error { border-left-color: #A3261B; color: #A3261B; }
+
+    /* Registers: ruled tables, sticky headers, stacked rows on narrow screens. */
+    .register { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #CBD2DB; }
+    .register th {
+      position: sticky; top: var(--sticky-top, 0px); z-index: 10; background: #EEF1F4;
+      text-align: left; font-size: 0.8125rem; font-weight: 600; color: #3A4453;
+      padding: 0.625rem 0.75rem; border-bottom: 1px solid #CBD2DB;
+    }
+    .register td { padding: 0.75rem; border-bottom: 1px solid #CBD2DB; vertical-align: top; }
+    .register .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    .pill {
+      display: inline-block; border: 1px solid; border-radius: 999px; padding: 0 0.5rem;
+      font-size: 0.8125rem; line-height: 1.375rem; white-space: nowrap;
+    }
+    .pill-active { border-color: #1B2330; color: #1B2330; font-weight: 600; }
+    .pill-history { border-style: dashed; border-color: #7A5A1F; color: #7A5A1F; }
+
+    @media (max-width: 639px) {
+      .register thead {
+        position: absolute; width: 1px; height: 1px; overflow: hidden;
+        clip: rect(0 0 0 0); white-space: nowrap;
+      }
+      .register, .register tbody, .register tr, .register td { display: block; width: 100%; }
+      .register tr { border-bottom: 1px solid #CBD2DB; padding: 0.625rem 0.75rem; }
+      .register td {
+        display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 0.75rem;
+        padding: 0.2rem 0; border: 0;
+      }
+      .register td::before { content: attr(data-label); color: #556070; font-size: 0.875rem; }
+      .register .num { text-align: left; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation: none !important;
@@ -34,6 +94,7 @@
         scroll-behavior: auto !important;
       }
     }
+
     @media print {
       .no-print { display: none !important; }
       body { background: #fff !important; color: #000 !important; }
@@ -43,6 +104,7 @@
         color: #000 !important;
         border: 2px solid #000 !important;
       }
+      .register th { position: static; }
     }
   </style>
 </head>
@@ -50,36 +112,68 @@
   <a href="#main" class="no-print sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:bg-white focus:px-4 focus:py-2 focus:text-[#1D4E89]">{% translate "Skip to main content" %}</a>
 
   {% if demo_mode %}
-  <div class="demo-banner sticky top-0 z-50 border-b-2 border-dashed border-[#7A5A1F] bg-[#FFF1C2] text-[#3D2C0A]" role="note">
+  <div id="demo-banner" class="demo-banner sticky top-0 z-50 border-b-2 border-dashed border-[#7A5A1F] bg-[#FFF1C2] text-[#3D2C0A]" role="note">
     <p class="mx-auto max-w-5xl px-4 py-2 text-sm font-semibold sm:px-6">{% translate "Demonstration system — data shown is fictional and orders issued here are not official." %}</p>
   </div>
   {% endif %}
 
   <header class="border-b border-[#CBD2DB] bg-white">
     <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-8 gap-y-3 px-4 py-4 sm:px-6">
-      <a href="{% url 'core:index' %}" class="block">
+      <a href="{% if user.is_authenticated %}{% url 'assignments:dashboard' %}{% else %}{% url 'core:index' %}{% endif %}" class="block">
         <span class="block text-lg font-semibold leading-snug">{{ institution_name }}</span>
         <span class="block text-sm text-[#556070]">{% translate "Committee assignment register" %}</span>
       </a>
-      <nav class="no-print" aria-label="{% translate 'Main' %}">
-        <ul class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-          {% block nav %}{% endblock %}
-          {% if user.is_authenticated %}
-            <li class="text-[#556070]">{{ user.full_name|default:user.email }}</li>
-          {% else %}
-            <li><a href="{{ login_url }}" class="font-medium text-[#1D4E89] underline-offset-4 hover:underline">{% translate "Sign in" %}</a></li>
-          {% endif %}
-        </ul>
-      </nav>
+      {% if user.is_authenticated %}
+        <div class="no-print flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#556070]">
+          <span>{{ user.full_name|default:user.email }}{% if user.is_principal %} · {% translate "Principal" %}{% endif %}</span>
+          <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="link">{% translate "Sign out" %}</button>
+          </form>
+        </div>
+      {% elif request.resolver_match.view_name != "accounts:login" %}
+        <a href="{% url 'accounts:login' %}" class="no-print link text-sm font-medium">{% translate "Sign in" %}</a>
+      {% endif %}
     </div>
+    {% if user.is_authenticated %}
+    <nav class="no-print border-t border-[#E3E7EC]" aria-label="{% translate 'Main' %}">
+      {% with current=request.resolver_match.view_name %}
+      <ul class="mx-auto flex max-w-5xl flex-wrap gap-x-6 px-4 sm:px-6">
+        <li><a class="nav-link" href="{% url 'assignments:dashboard' %}"{% if current == "assignments:dashboard" %} aria-current="page"{% endif %}>{% translate "Dashboard" %}</a></li>
+        <li><a class="nav-link" href="{% url 'assignments:directory' %}"{% if current == "assignments:directory" %} aria-current="page"{% endif %}>{% translate "Directory" %}</a></li>
+        <li><a class="nav-link" href="{% url 'accounts:workload' %}"{% if current == "accounts:workload" %} aria-current="page"{% endif %}>{% translate "Workload" %}</a></li>
+        <li><a class="nav-link" href="{% url 'accounts:profile' %}"{% if current == "accounts:profile" %} aria-current="page"{% endif %}>{% translate "Profile" %}</a></li>
+      </ul>
+      {% endwith %}
+    </nav>
+    {% endif %}
   </header>
 
-  <main id="main" class="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+  <main id="main" class="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
+    {% if messages %}
+    <div class="mb-6 space-y-2" aria-live="polite">
+      {% for message in messages %}
+      <p class="message{% if message.tags %} message-{{ message.tags }}{% endif %}">{{ message }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 
   <footer class="mx-auto max-w-5xl border-t border-[#CBD2DB] px-4 py-6 text-sm text-[#556070] sm:px-6">
     {{ institution_name }} · {% translate "Committee assignment management system" %}
   </footer>
+
+  <script>
+    // Keep sticky table headers below the sticky demo banner, whatever its height.
+    (function () {
+      var banner = document.getElementById("demo-banner");
+      function setStickyTop() {
+        document.documentElement.style.setProperty("--sticky-top", (banner ? banner.offsetHeight : 0) + "px");
+      }
+      setStickyTop();
+      window.addEventListener("resize", setStickyTop);
+    })();
+  </script>
 </body>
 </html>

@@ -75,6 +75,10 @@ class UserQuerySet(models.QuerySet):
 class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
     use_in_migrations = True
 
+    def get_by_natural_key(self, username):
+        # Emails are stored lowercase; signing in must not depend on how one is typed.
+        return self.get(**{self.model.USERNAME_FIELD: username.strip().lower()})
+
     def _create_user(self, email, password, **extra_fields):
         if not email:
             raise ValueError("An email address is required.")

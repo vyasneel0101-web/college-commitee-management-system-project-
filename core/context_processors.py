@@ -12,5 +12,4 @@ def institution(request):
         "institution_name": settings.INSTITUTION_NAME,
         "institution_code": settings.INSTITUTION_CODE,
         "demo_mode": settings.DEMO_MODE,
-        "login_url": settings.LOGIN_URL,
     }

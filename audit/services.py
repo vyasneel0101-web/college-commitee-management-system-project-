@@ -9,8 +9,9 @@ def log(*, action, summary, obj=None, actor=None, detail=None, request=None):
     `detail` holds changed field names and values only, never a document or
     a secret.
     """
-    if actor is None and request is not None and request.user.is_authenticated:
-        actor = request.user
+    request_user = getattr(request, "user", None)
+    if actor is None and request_user is not None and request_user.is_authenticated:
+        actor = request_user
     return AuditLogEntry.objects.create(
         actor=actor,
         action=action,
