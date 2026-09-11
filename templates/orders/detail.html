@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ order.order_no }}{% endblock %}
+
+{% block content %}
+<p class="text-sm text-[#556070]">{{ order.get_order_type_display }} {% translate "order" %}</p>
+<h1 class="mt-1 text-2xl font-semibold leading-tight tabular-nums sm:text-3xl">{{ order.order_no }}</h1>
+{% if order.is_cancelled %}
+<p class="mt-2"><span class="pill pill-history">{% translate "Cancelled" %}</span> {{ order.cancellation_reason }}</p>
+{% endif %}
+
+<div class="no-print mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+  <a class="btn-primary" href="{% url 'orders:download' order.pk %}">{% translate "Download order (.docx)" %}</a>
+  {% if user.is_principal %}
+  <a class="link" href="{% url 'orders:assign' %}">{% translate "Assign another committee" %}</a>
+  <a class="link" href="{% url 'orders:register' %}">{% translate "Order register" %}</a>
+  {% endif %}
+</div>
+
+<section class="mt-8 max-w-3xl" aria-labelledby="effect-heading">
+  <h2 id="effect-heading" class="text-lg font-semibold">{% translate "What this order did" %}</h2>
+  <ul class="mt-3 border border-[#CBD2DB] bg-white">
+    {% for assignment in created %}
+    <li class="border-b border-[#CBD2DB] px-4 py-3 last:border-b-0">
+      {% blocktranslate trimmed with name=assignment.faculty.full_name role=assignment.get_role_display %}
+        Appointed <strong>{{ name }}</strong> as {{ role }}
+      {% endblocktranslate %}
+      <span class="text-[#556070]">· {{ assignment.faculty.get_designation_display }}{% if assignment.faculty.department %}, {{ assignment.faculty.department.name }}{% endif %}</span>
+      <span class="mt-1 block">{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}</span>
+    </li>
+    {% endfor %}
+    {% for assignment in ended %}
+    <li class="border-b border-[#CBD2DB] px-4 py-3 last:border-b-0">
+      {% blocktranslate trimmed with name=assignment.faculty.full_name role=assignment.get_role_display %}
+        Superseded <strong>{{ name }}</strong> as {{ role }}
+      {% endblocktranslate %}
+      <span class="mt-1 block">{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<dl class="mt-6 max-w-3xl border border-[#CBD2DB] bg-white">
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Order date" %}</dt>
+    <dd class="tabular-nums">{{ order.order_date|date:"j M Y" }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Committee" %}</dt>
+    <dd>{{ order.committee.name }} <span class="text-sm text-[#556070]">{{ order.committee.code }}</span></dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Academic year" %}</dt>
+    <dd>{{ order.academic_year.label }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Issued by" %}</dt>
+    <dd>{{ order.issued_by.salutation }} {{ order.issued_by.full_name }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Template" %}</dt>
+    <dd>{% blocktranslate with code=order.committee.code version=order.template_used.version %}{{ code }} template, version {{ version }}{% endblocktranslate %}</dd>
+  </div>
+  <div class="px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Remarks" %}</dt>
+    <dd>{{ order.remarks|default:"—" }}</dd>
+  </div>
+</dl>
+
+<p class="mt-4 max-w-3xl text-sm text-[#556070]">{% translate "The stored document is kept exactly as issued. A mistake is corrected by a new order, never by editing this one." %}</p>
+{% endblock %}

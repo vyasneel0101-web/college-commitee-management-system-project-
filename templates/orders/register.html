@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Order register" %}{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Order register" %}</h1>
+    <p class="mt-2 max-w-2xl text-[#3A4453]">
+      {% blocktranslate count counter=orders|length trimmed %}
+        {{ counter }} order issued, newest first. Every order stays on record, including those whose assignments have since ended.
+      {% plural %}
+        {{ counter }} orders issued, newest first. Every order stays on record, including those whose assignments have since ended.
+      {% endblocktranslate %}
+    </p>
+  </div>
+  <a class="btn-primary no-print" href="{% url 'orders:assign' %}">{% translate "Assign committee" %}</a>
+</div>
+
+{% if orders %}
+<table class="register mt-6">
+  <thead>
+    <tr>
+      <th scope="col">{% translate "Order" %}</th>
+      <th scope="col">{% translate "Date" %}</th>
+      <th scope="col">{% translate "Committee" %}</th>
+      <th scope="col">{% translate "Issued to" %}</th>
+      <th scope="col">{% translate "Assignment now" %}</th>
+      <th scope="col" class="no-print">{% translate "Document" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for order in orders %}
+    <tr>
+      <td data-label="{% translate 'Order' %}" class="tabular-nums">
+        <a class="link font-medium" href="{% url 'orders:detail' order.pk %}">{{ order.order_no }}</a>
+        {% if order.is_cancelled %}<span class="pill pill-history mt-1">{% translate "Cancelled" %}</span>{% endif %}
+      </td>
+      <td data-label="{% translate 'Date' %}" class="tabular-nums">{{ order.order_date|date:"j M Y" }}</td>
+      <td data-label="{% translate 'Committee' %}">{{ order.committee.name }}</td>
+      <td data-label="{% translate 'Issued to' %}">
+        {% for assignment in order.created_assignments.all %}{{ assignment.faculty.full_name }} <span class="text-sm text-[#556070]">{{ assignment.get_role_display }}</span>{% if not forloop.last %}<br>{% endif %}{% endfor %}
+      </td>
+      <td data-label="{% translate 'Assignment now' %}">
+        {% for assignment in order.created_assignments.all %}{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}{% endfor %}
+      </td>
+      <td data-label="{% translate 'Document' %}" class="no-print">
+        <a class="link" href="{% url 'orders:download' order.pk %}">{% translate "Download" %}</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="mt-6 max-w-2xl border-l-4 border-[#CBD2DB] bg-white px-4 py-3 text-[#3A4453]">
+  {% translate "No orders issued yet. Assign a committee to issue the first one." %}
+</p>
+{% endif %}
+{% endblock %}

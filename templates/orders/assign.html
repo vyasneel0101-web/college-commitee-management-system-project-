@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Assign committee" %}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Assign committee" %}</h1>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "Choose the committee, the faculty member and their role. You will see exactly what the order does before it is issued." %}</p>
+
+{% if form.non_field_errors %}
+<div class="message message-error mt-6 max-w-2xl" role="alert">
+  {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" action="{% url 'orders:assign' %}" class="mt-6 max-w-2xl space-y-7" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="step" value="preview">
+
+  <div>
+    <label for="{{ form.committee.id_for_label }}" class="block font-medium">{{ form.committee.label }}</label>
+    <div class="mt-1">{{ form.committee }}</div>
+    {% if form.committee.errors %}<p class="error-text mt-1 text-sm">{{ form.committee.errors|join:" " }}</p>{% endif %}
+  </div>
+
+  <div>
+    <label for="{{ form.faculty.id_for_label }}" class="block font-medium">{{ form.faculty.label }}</label>
+    <p class="mt-1 text-sm text-[#556070]">{% translate "Each name shows the department and how many committees that person already holds." %}</p>
+    <label for="faculty-filter" class="mt-3 block text-sm font-medium">{% translate "Find by name or department" %}</label>
+    <input id="faculty-filter" type="search" class="field mt-1" autocomplete="off" aria-controls="{{ form.faculty.id_for_label }}">
+    <p id="faculty-filter-status" class="mt-1 text-sm text-[#556070]" aria-live="polite"></p>
+    <div class="mt-2">{{ form.faculty }}</div>
+    {% if form.faculty.errors %}<p class="error-text mt-1 text-sm">{{ form.faculty.errors|join:" " }}</p>{% endif %}
+  </div>
+
+  <fieldset>
+    <legend class="font-medium">{{ form.role.label }}</legend>
+    <p class="mt-1 text-sm text-[#556070]">{% translate "A committee has one convener: a new convener supersedes the current one. Members are added alongside existing members." %}</p>
+    <div class="mt-2 flex flex-wrap gap-x-8 gap-y-2">
+      {% for radio in form.role %}
+      <label class="flex items-center gap-2" for="{{ radio.id_for_label }}">{{ radio.tag }} {{ radio.choice_label }}</label>
+      {% endfor %}
+    </div>
+    {% if form.role.errors %}<p class="error-text mt-1 text-sm">{{ form.role.errors|join:" " }}</p>{% endif %}
+  </fieldset>
+
+  <div class="max-w-xs">
+    <label for="{{ form.order_date.id_for_label }}" class="block font-medium">{{ form.order_date.label }}</label>
+    <div class="mt-1">{{ form.order_date }}</div>
+    <p class="mt-1 text-sm text-[#556070]">{% translate "Today by default. An order cannot be dated in the future." %}</p>
+    {% if form.order_date.errors %}<p class="error-text mt-1 text-sm">{{ form.order_date.errors|join:" " }}</p>{% endif %}
+  </div>
+
+  <div>
+    <label for="{{ form.remarks.id_for_label }}" class="block font-medium">{{ form.remarks.label }} <span class="font-normal text-[#556070]">{% translate "(optional)" %}</span></label>
+    <div class="mt-1">{{ form.remarks }}</div>
+    <p class="mt-1 text-sm text-[#556070]">{% translate "Printed on templates that include remarks, such as the Examination Committee circular." %}</p>
+    {% if form.remarks.errors %}<p class="error-text mt-1 text-sm">{{ form.remarks.errors|join:" " }}</p>{% endif %}
+  </div>
+
+  <button type="submit" class="btn-primary">{% translate "Preview order" %}</button>
+</form>
+
+<script>
+  // Narrow the faculty list as the Principal types. The <select> still works without this.
+  (function () {
+    var filter = document.getElementById("faculty-filter");
+    var select = document.getElementById("{{ form.faculty.id_for_label }}");
+    var status = document.getElementById("faculty-filter-status");
+    if (!filter || !select) { return; }
+    var total = select.options.length;
+    var template = "{{ _('%(shown)s of %(total)s shown')|escapejs }}";
+    filter.addEventListener("input", function () {
+      var terms = filter.value.trim().toLowerCase();
+      var shown = 0;
+      Array.prototype.forEach.call(select.options, function (option) {
+        var match = !terms || option.selected || option.text.toLowerCase().indexOf(terms) !== -1;
+        option.hidden = !match;
+        if (match) { shown += 1; }
+      });
+      status.textContent = terms ? template.replace("%(shown)s", shown).replace("%(total)s", total) : "";
+    });
+    filter.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === "ArrowDown") {
+        event.preventDefault();
+        select.focus();
+      }
+    });
+  })();
+</script>
+{% endblock %}

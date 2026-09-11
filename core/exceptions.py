@@ -51,6 +51,13 @@ class OrderDateInvalid(DomainError):
     default_message = _("The order date is not valid.")
 
 
+class PreviewOutdated(DomainError):
+    default_message = _(
+        "The committee changed after you previewed this order, so it was not issued. "
+        "Preview it again and check who will be superseded."
+    )
+
+
 class TemplateMissing(DomainError):
     default_message = _(
         "This committee has no active order template. Upload one before issuing orders."

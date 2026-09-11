@@ -17,6 +17,13 @@
   </p>
 </div>
 
+{% if user.is_principal %}
+<div class="no-print mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 border border-[#CBD2DB] bg-white px-4 py-4">
+  <a class="btn-primary" href="{% url 'orders:assign' %}">{% translate "Assign committee" %}</a>
+  <a class="link" href="{% url 'orders:register' %}">{% translate "Order register" %}</a>
+</div>
+{% endif %}
+
 <section class="mt-10" aria-labelledby="held-heading">
   <h2 id="held-heading" class="text-lg font-semibold">{% translate "Held now" %}</h2>
   {% if active %}
@@ -38,7 +45,10 @@
         </td>
         <td data-label="{% translate 'Your role' %}">{{ assignment.get_role_display }}</td>
         <td data-label="{% translate 'Since' %}" class="tabular-nums">{{ assignment.start_date|date:"j M Y" }}</td>
-        <td data-label="{% translate 'Order' %}" class="tabular-nums">{{ assignment.issuing_order.order_no }}</td>
+        <td data-label="{% translate 'Order' %}" class="tabular-nums">
+            <a class="link" href="{% url 'orders:detail' assignment.issuing_order_id %}">{{ assignment.issuing_order.order_no }}</a>
+            <a class="link mt-1 block text-sm" href="{% url 'orders:download' assignment.issuing_order_id %}">{% translate "Download .docx" %}</a>
+          </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -84,7 +94,10 @@
             <span class="mt-1 block text-sm text-[#556070]">{% blocktranslate with name=assignment.superseded_by.faculty.full_name %}Handed to {{ name }}{% endblocktranslate %}</span>
             {% endif %}
           </td>
-          <td data-label="{% translate 'Order' %}" class="tabular-nums">{{ assignment.issuing_order.order_no }}</td>
+          <td data-label="{% translate 'Order' %}" class="tabular-nums">
+            <a class="link" href="{% url 'orders:detail' assignment.issuing_order_id %}">{{ assignment.issuing_order.order_no }}</a>
+            <a class="link mt-1 block text-sm" href="{% url 'orders:download' assignment.issuing_order_id %}">{% translate "Download .docx" %}</a>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
