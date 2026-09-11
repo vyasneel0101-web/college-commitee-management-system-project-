@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "committees",
     "assignments",
     "orders",
+    "audit",
     "core",
 ]
 

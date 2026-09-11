@@ -2,7 +2,7 @@ from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.core.validators import FileExtensionValidator
 from django.db import models
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.db.models.functions import Upper
 from django.utils.translation import gettext_lazy as _
 
@@ -55,7 +55,24 @@ class GovtClass(models.TextChoices):
     CLASS_IV = "CLASS_IV", _("Class IV")
 
 
-class UserManager(BaseUserManager):
+class UserQuerySet(models.QuerySet):
+    def faculty_with_counts(self):
+        """
+        Active staff annotated with `active_count`, their number of ACTIVE
+        assignments, busiest first. Superusers are technical operators, not
+        staff, and are excluded.
+        """
+        return (
+            self.filter(is_active=True, is_superuser=False)
+            .select_related("department")
+            # "ACTIVE" is AssignmentStatus.ACTIVE; imported by value to avoid
+            # a circular import between accounts and assignments.
+            .annotate(active_count=Count("assignments", filter=Q(assignments__status="ACTIVE")))
+            .order_by("-active_count", "full_name")
+        )
+
+
+class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
     use_in_migrations = True
 
     def _create_user(self, email, password, **extra_fields):
@@ -173,3 +190,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def is_principal(self):
         return self.role == Role.PRINCIPAL
+
+    @property
+    def active_assignments(self):
+        return self.assignments.active()
+
+    @property
+    def active_committee_count(self):
+        """One query per call. In list views use User.objects.faculty_with_counts()."""
+        return self.active_assignments.count()
