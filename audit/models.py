@@ -21,6 +21,23 @@ class AuditAction:
     PROFILE_UPDATED = "PROFILE_UPDATED"
 
 
+ACTION_LABELS = {
+    AuditAction.ORDER_ISSUED: _("Order issued"),
+    AuditAction.ORDER_DOWNLOADED: _("Order downloaded"),
+    AuditAction.ORDER_CANCELLED: _("Order cancelled"),
+    AuditAction.ASSIGNMENT_CREATED: _("Committee assigned"),
+    AuditAction.ASSIGNMENT_SUPERSEDED: _("Assignment superseded"),
+    AuditAction.ASSIGNMENT_RELINQUISHED: _("Assignment relinquished"),
+    AuditAction.ASSIGNMENT_CANCELLED: _("Assignment cancelled"),
+    AuditAction.ASSIGNMENT_RESTORED: _("Assignment restored"),
+    AuditAction.ASSIGNMENT_EXPIRED: _("Assignment expired"),
+    AuditAction.TEMPLATE_UPLOADED: _("Template uploaded"),
+    AuditAction.LOGIN_SUCCESS: _("Signed in"),
+    AuditAction.LOGIN_FAILED: _("Failed sign-in"),
+    AuditAction.PROFILE_UPDATED: _("Profile updated"),
+}
+
+
 class AuditLogEntry(models.Model):
     """Append-only. Saving an existing entry or deleting any entry raises."""
 

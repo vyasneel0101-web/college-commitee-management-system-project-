@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load i18n audit_extras %}
+
+{% block title %}{% translate "Audit log" %}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Audit log" %}</h1>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "Every action the system recorded, newest first. Entries are written once and can never be changed or removed, including by the Principal." %}</p>
+
+<form method="get" action="{% url 'audit:log' %}" class="no-print mt-6 flex flex-wrap items-end gap-3">
+  <div>
+    <label for="{{ form.action.id_for_label }}" class="block font-medium">{{ form.action.label }}</label>
+    <div class="mt-1">{{ form.action }}</div>
+  </div>
+  <button type="submit" class="btn-primary">{% translate "Filter" %}</button>
+  {% if action %}<a href="{% url 'audit:log' %}" class="link py-2.5">{% translate "Clear filter" %}</a>{% endif %}
+</form>
+
+<p class="mt-5 text-sm text-[#556070]">
+  {% blocktranslate count counter=page.paginator.count trimmed %}
+    {{ counter }} entry.
+  {% plural %}
+    {{ counter }} entries.
+  {% endblocktranslate %}
+  {% if page.paginator.num_pages > 1 %}
+    {% blocktranslate with current=page.number total=page.paginator.num_pages %}Page {{ current }} of {{ total }}.{% endblocktranslate %}
+  {% endif %}
+</p>
+
+{% if page.object_list %}
+<table class="register mt-3">
+  <thead>
+    <tr>
+      <th scope="col">{% translate "When" %}</th>
+      <th scope="col">{% translate "Who" %}</th>
+      <th scope="col">{% translate "Action" %}</th>
+      <th scope="col">{% translate "What happened" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for entry in page.object_list %}
+    <tr>
+      <td data-label="{% translate 'When' %}" class="tabular-nums">{{ entry.created_at|date:"j M Y, H:i" }}</td>
+      <td data-label="{% translate 'Who' %}">{{ entry.actor.full_name|default:_("System") }}</td>
+      <td data-label="{% translate 'Action' %}">{{ entry.action|audit_label }}</td>
+      <td data-label="{% translate 'What happened' %}">
+        {{ entry.summary }}
+        {% if entry.ip_address %}<span class="block text-sm text-[#556070]">{{ entry.ip_address }}</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if page.paginator.num_pages > 1 %}
+<nav class="no-print mt-5 flex flex-wrap items-center gap-4" aria-label="{% translate 'Pages' %}">
+  {% if page.has_previous %}
+  <a class="link" href="?{% if action %}action={{ action }}&amp;{% endif %}page={{ page.previous_page_number }}">{% translate "Newer entries" %}</a>
+  {% endif %}
+  {% if page.has_next %}
+  <a class="link" href="?{% if action %}action={{ action }}&amp;{% endif %}page={{ page.next_page_number }}">{% translate "Older entries" %}</a>
+  {% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<p class="mt-3 max-w-2xl border-l-4 border-[#CBD2DB] bg-white px-4 py-3 text-[#3A4453]">
+  {% if action %}{% translate "No entries of this kind yet." %}{% else %}{% translate "Nothing has been recorded yet." %}{% endif %}
+</p>
+{% endif %}
+{% endblock %}
