@@ -12,9 +12,11 @@ from audit import services as audit
 from audit.models import AuditAction
 from core.exceptions import (
     AssignmentConflict,
+    AssignmentNotActive,
     CommitteeInactive,
     FacultyInactive,
     OrderDateInvalid,
+    RestoreBlocked,
     RoleNotAllowed,
 )
 
@@ -157,3 +159,98 @@ def expire_assignments_for_year(academic_year, *, carry_forward=()):
         )
         count += 1
     return count
+
+
+@transaction.atomic
+def relinquish_assignment(*, assignment, order):
+    """
+    End an ACTIVE assignment with nobody taking over (BR-4).
+
+    Invariants: the row is never deleted; status becomes RELINQUISHED,
+    end_date the order's date and ending_order the issuing order;
+    superseded_by stays null because nobody replaced them.
+    """
+    if assignment.status != AssignmentStatus.ACTIVE:
+        raise AssignmentNotActive()
+    if order.order_date < assignment.start_date:
+        raise OrderDateInvalid(
+            _("The order date is before the assignment began on %(date)s. Choose a later date.")
+            % {"date": assignment.start_date.strftime("%d-%m-%Y")}
+        )
+    assignment.status = AssignmentStatus.RELINQUISHED
+    assignment.end_date = order.order_date
+    assignment.ending_order = order
+    assignment.save(update_fields=["status", "end_date", "ending_order"])
+    audit.log(
+        action=AuditAction.ASSIGNMENT_RELINQUISHED,
+        actor=order.issued_by,
+        obj=assignment,
+        summary=f"{assignment.faculty.full_name} relinquished {assignment.get_role_display()} of {assignment.committee.code} by {order.order_no}",
+        detail={"order_no": order.order_no, "end_date": order.order_date.isoformat()},
+    )
+    return assignment
+
+
+@transaction.atomic
+def cancel_assignment(*, assignment, cancelling_order):
+    """
+    Void an assignment because the order that created it was cancelled (BR-6).
+
+    Invariant: the row stays, marked CANCELLED, so the history still shows
+    that the mistaken order existed and what it had done.
+    """
+    assignment.status = AssignmentStatus.CANCELLED
+    assignment.end_date = cancelling_order.order_date
+    assignment.ending_order = cancelling_order
+    assignment.save(update_fields=["status", "end_date", "ending_order"])
+    audit.log(
+        action=AuditAction.ASSIGNMENT_CANCELLED,
+        actor=cancelling_order.issued_by,
+        obj=assignment,
+        summary=f"{assignment.faculty.full_name}, {assignment.committee.code}: assignment cancelled by {cancelling_order.order_no}",
+        detail={"order_no": cancelling_order.order_no},
+    )
+    return assignment
+
+
+@transaction.atomic
+def restore_superseded(*, assignment, actor=None):
+    """
+    Return a SUPERSEDED assignment to ACTIVE when the order that replaced it
+    is cancelled (BR-6).
+
+    Invariants: end_date, ending_order and superseded_by are cleared, because
+    the event that ended it no longer stands. Refuses when the role is
+    already filled again, rather than breaking uniq_active_convener.
+    """
+    if assignment.status != AssignmentStatus.SUPERSEDED:
+        raise AssignmentNotActive(
+            _("Only a superseded assignment can be restored.")
+        )
+    clash = (
+        Assignment.objects.active()
+        .filter(
+            committee=assignment.committee,
+            role=assignment.role,
+            faculty=assignment.faculty,
+        )
+        .exists()
+    )
+    if assignment.role == AssignmentRole.CONVENER:
+        clash = clash or current_convener(assignment.committee) is not None
+    if clash:
+        raise RestoreBlocked()
+
+    assignment.status = AssignmentStatus.ACTIVE
+    assignment.end_date = None
+    assignment.ending_order = None
+    assignment.superseded_by = None
+    assignment.save(update_fields=["status", "end_date", "ending_order", "superseded_by"])
+    audit.log(
+        action=AuditAction.ASSIGNMENT_RESTORED,
+        actor=actor,
+        obj=assignment,
+        summary=f"{assignment.faculty.full_name} restored as {assignment.get_role_display()} of {assignment.committee.code}",
+        detail={"status": AssignmentStatus.ACTIVE},
+    )
+    return assignment

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Cancel order" %}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% blocktranslate with number=order.order_no %}Cancel order {{ number }}{% endblocktranslate %}</h1>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "The order is not deleted. A corrigendum is issued that withdraws it, and both stay in the register." %}</p>
+
+{% if form.non_field_errors %}
+<div class="message message-error mt-6 max-w-2xl" role="alert">
+  {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+</div>
+{% endif %}
+
+<section class="mt-8 max-w-3xl border border-[#CBD2DB] bg-white" aria-labelledby="effect-heading">
+  <h2 id="effect-heading" class="border-b border-[#CBD2DB] px-4 py-3 text-lg font-semibold">{% translate "What cancelling will do" %}</h2>
+  <div class="space-y-3 px-4 py-4">
+    <p>{% blocktranslate with number=order.order_no date=order.order_date|date:"j M Y" %}Order {{ number }} of {{ date }} will be marked cancelled and a corrigendum will be issued with a new number.{% endblocktranslate %}</p>
+    {% for assignment in created %}
+    <p class="border-l-4 border-[#7A5A1F] pl-3">
+      {% blocktranslate trimmed with name=assignment.faculty.full_name role=assignment.get_role_display committee=assignment.committee.name %}
+        <strong>{{ name }}</strong> stops being {{ role }} of {{ committee }}.
+      {% endblocktranslate %}
+    </p>
+    {% endfor %}
+    {% for assignment in restored %}
+    <p class="border-l-4 border-[#7A5A1F] pl-3">
+      {% blocktranslate trimmed with name=assignment.faculty.full_name role=assignment.get_role_display committee=assignment.committee.name %}
+        <strong>{{ name }}</strong> becomes {{ role }} of {{ committee }} again, as before this order.
+      {% endblocktranslate %}
+    </p>
+    {% empty %}
+    <p>{% translate "No earlier holder was displaced by this order, so nobody is restored." %}</p>
+    {% endfor %}
+    <p class="text-[#3A4453]">{% translate "The cancelled order keeps its number and its document stays downloadable." %}</p>
+  </div>
+</section>
+
+<form method="post" action="{% url 'orders:cancel' order.pk %}" class="mt-8 max-w-2xl" novalidate>
+  {% csrf_token %}
+  <label for="id_reason" class="block font-medium">{{ form.reason.label }}</label>
+  <p class="mt-1 text-sm text-[#556070]">{% translate "Printed on the corrigendum, so write it as the office would read it." %}</p>
+  <textarea id="id_reason" name="reason" rows="3" class="field mt-2" maxlength="500"
+            aria-describedby="{% if form.reason.errors %}reason-error{% endif %}"
+            {% if form.reason.errors %}aria-invalid="true"{% endif %}>{{ form.reason.value|default_if_none:'' }}</textarea>
+  {% if form.reason.errors %}<p id="reason-error" class="error-text mt-1 text-sm">{{ form.reason.errors|join:" " }}</p>{% endif %}
+
+  <div class="mt-6 flex flex-wrap items-center gap-4">
+    <button type="submit" class="btn-primary">{% translate "Cancel order" %}</button>
+    <a class="link" href="{% url 'orders:detail' order.pk %}">{% translate "Keep this order" %}</a>
+  </div>
+</form>
+{% endblock %}

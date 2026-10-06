@@ -101,10 +101,14 @@ class Order(ProtectedRecord):
     generated_file = models.FileField(
         _("generated file"), upload_to=order_file_path, max_length=255
     )
+    # Null for relinquishment and corrigendum orders, which are not rendered
+    # from a committee template; always set for assignment orders (BR-7).
     template_used = models.ForeignKey(
         "committees.CommitteeTemplate",
         verbose_name=_("template used"),
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
     )
     render_context = models.JSONField(_("render context"))
     remarks = models.TextField(_("remarks"), blank=True)

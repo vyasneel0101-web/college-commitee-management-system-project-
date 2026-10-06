@@ -12,7 +12,9 @@ from audit.models import AuditAction
 from core.exceptions import DomainError, PreviewOutdated
 
 from . import services
-from .forms import AssignCommitteeForm
+from assignments.models import Assignment, AssignmentStatus
+
+from .forms import AssignCommitteeForm, CancelOrderForm, RelinquishForm
 from .models import Order
 
 DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -116,3 +118,62 @@ def download(request, pk):
     response["Cache-Control"] = "private, no-store"
     response["X-Content-Type-Options"] = "nosniff"
     return response
+
+
+@principal_required
+@require_http_methods(["GET", "POST"])
+def cancel(request, pk):
+    """Withdraw an order by issuing a corrigendum. Requires a typed reason."""
+    order = get_object_or_404(
+        Order.objects.select_related("committee").filter(is_cancelled=False), pk=pk
+    )
+    form = CancelOrderForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            corrigendum = services.cancel_order(
+                order=order,
+                reason=form.cleaned_data["reason"],
+                issued_by=request.user,
+                request=request,
+            )
+        except DomainError as exc:
+            form.add_error(None, exc.message)
+        else:
+            messages.success(request, _("Order cancelled."))
+            return redirect("orders:detail", pk=corrigendum.pk)
+    context = {
+        "order": order,
+        "form": form,
+        "created": list(order.created_assignments.select_related("faculty", "committee")),
+        "restored": list(
+            order.ended_assignments.select_related("faculty", "committee").filter(
+                status=AssignmentStatus.SUPERSEDED
+            )
+        ),
+    }
+    return render(request, "orders/cancel.html", context)
+
+
+@principal_required
+@require_http_methods(["GET", "POST"])
+def relinquish(request, pk):
+    """End an active assignment with no replacement, by order (BR-4)."""
+    assignment = get_object_or_404(
+        Assignment.objects.active().select_related("faculty", "committee"), pk=pk
+    )
+    form = RelinquishForm(request.POST or None, initial={"order_date": timezone.localdate()})
+    if request.method == "POST" and form.is_valid():
+        try:
+            order = services.issue_relinquishment_order(
+                assignment=assignment,
+                order_date=form.cleaned_data["order_date"],
+                issued_by=request.user,
+                remarks=form.cleaned_data["remarks"],
+                request=request,
+            )
+        except DomainError as exc:
+            form.add_error(None, exc.message)
+        else:
+            messages.success(request, _("Relinquishment order issued."))
+            return redirect("orders:detail", pk=order.pk)
+    return render(request, "orders/relinquish.html", {"assignment": assignment, "form": form})

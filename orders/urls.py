@@ -9,4 +9,6 @@ urlpatterns = [
     path("orders/", views.register, name="register"),
     path("orders/<int:pk>/", views.detail, name="detail"),
     path("orders/<int:pk>/download/", views.download, name="download"),
+    path("orders/<int:pk>/cancel/", views.cancel, name="cancel"),
+    path("assignments/<int:pk>/relinquish/", views.relinquish, name="relinquish"),
 ]

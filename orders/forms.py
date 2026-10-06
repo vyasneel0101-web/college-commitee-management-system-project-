@@ -49,3 +49,33 @@ class AssignCommitteeForm(forms.Form):
             self.fields[name].widget.attrs["class"] = "field"
         self.fields["faculty"].widget.attrs["size"] = 8
         self.fields["order_date"].widget.attrs["max"] = timezone.localdate().isoformat()
+
+
+class CancelOrderForm(forms.Form):
+    reason = forms.CharField(
+        label=_("Reason for cancelling"),
+        min_length=10,
+        max_length=500,
+        widget=forms.Textarea(attrs={"rows": 3, "class": "field"}),
+        error_messages={
+            "required": _("State why the order is being cancelled. It is printed on the corrigendum."),
+            "min_length": _("Give a fuller reason: it is printed on the corrigendum."),
+        },
+    )
+
+
+class RelinquishForm(forms.Form):
+    order_date = forms.DateField(
+        label=_("Order date"),
+        widget=forms.DateInput(attrs={"type": "date", "class": "field"}, format="%Y-%m-%d"),
+    )
+    remarks = forms.CharField(
+        label=_("Remarks"),
+        required=False,
+        max_length=500,
+        widget=forms.Textarea(attrs={"rows": 3, "class": "field"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["order_date"].widget.attrs["max"] = timezone.localdate().isoformat()

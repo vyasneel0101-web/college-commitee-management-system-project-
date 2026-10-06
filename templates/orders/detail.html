@@ -8,13 +8,22 @@
 <h1 class="mt-1 text-2xl font-semibold leading-tight tabular-nums sm:text-3xl">{{ order.order_no }}</h1>
 {% if order.is_cancelled %}
 <p class="mt-2"><span class="pill pill-history">{% translate "Cancelled" %}</span> {{ order.cancellation_reason }}</p>
+{% if order.cancelled_by_order %}
+<p class="mt-1 text-sm"><a class="link" href="{% url 'orders:detail' order.cancelled_by_order_id %}">{% blocktranslate with number=order.cancelled_by_order.order_no %}Cancelled by {{ number }}{% endblocktranslate %}</a></p>
 {% endif %}
+{% endif %}
+{% for cancelled in order.cancels.all %}
+<p class="mt-1 text-sm"><a class="link" href="{% url 'orders:detail' cancelled.pk %}">{% blocktranslate with number=cancelled.order_no %}This corrigendum cancels {{ number }}{% endblocktranslate %}</a></p>
+{% endfor %}
 
 <div class="no-print mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
   <a class="btn-primary" href="{% url 'orders:download' order.pk %}">{% translate "Download order (.docx)" %}</a>
   {% if user.is_principal %}
   <a class="link" href="{% url 'orders:assign' %}">{% translate "Assign another committee" %}</a>
   <a class="link" href="{% url 'orders:register' %}">{% translate "Order register" %}</a>
+  {% if not order.is_cancelled and order.order_type != "CORRIGENDUM" %}
+  <a class="link" href="{% url 'orders:cancel' order.pk %}">{% translate "Cancel this order" %}</a>
+  {% endif %}
   {% endif %}
 </div>
 
@@ -28,6 +37,9 @@
       {% endblocktranslate %}
       <span class="text-[#556070]">· {{ assignment.faculty.get_designation_display }}{% if assignment.faculty.department %}, {{ assignment.faculty.department.name }}{% endif %}</span>
       <span class="mt-1 block">{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}</span>
+      {% if user.is_principal and assignment.status == "ACTIVE" %}
+      <a class="link no-print mt-1 block text-sm" href="{% url 'orders:relinquish' assignment.pk %}">{% translate "Relinquish this committee" %}</a>
+      {% endif %}
     </li>
     {% endfor %}
     {% for assignment in ended %}

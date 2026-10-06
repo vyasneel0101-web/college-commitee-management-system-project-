@@ -58,6 +58,31 @@ class PreviewOutdated(DomainError):
     )
 
 
+class AssignmentNotActive(DomainError):
+    default_message = _("This assignment has already ended, so it cannot be ended again.")
+
+
+class OrderAlreadyCancelled(DomainError):
+    default_message = _("This order has already been cancelled.")
+
+
+class OrderNotCancellable(DomainError):
+    default_message = _(
+        "A corrigendum cannot itself be cancelled. Issue a fresh order instead."
+    )
+
+
+class CancellationReasonRequired(DomainError):
+    default_message = _("A cancellation must state its reason. It is printed on the corrigendum.")
+
+
+class RestoreBlocked(DomainError):
+    default_message = _(
+        "A later order has already filled this role, so the earlier holder cannot be restored. "
+        "Cancel the later order first."
+    )
+
+
 class TemplateMissing(DomainError):
     default_message = _(
         "This committee has no active order template. Upload one before issuing orders."

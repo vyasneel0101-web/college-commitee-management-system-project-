@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Relinquish committee" %}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Relinquish committee" %}</h1>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "Ends this assignment with nobody taking over. An order is issued and the committee is left without this holder." %}</p>
+
+{% if form.non_field_errors %}
+<div class="message message-error mt-6 max-w-2xl" role="alert">
+  {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+</div>
+{% endif %}
+
+<section class="mt-8 max-w-3xl border border-[#CBD2DB] bg-white" aria-labelledby="effect-heading">
+  <h2 id="effect-heading" class="border-b border-[#CBD2DB] px-4 py-3 text-lg font-semibold">{% translate "What this order will do" %}</h2>
+  <div class="space-y-3 px-4 py-4">
+    <p>
+      {% blocktranslate trimmed with name=assignment.faculty.full_name role=assignment.get_role_display committee=assignment.committee.name since=assignment.start_date|date:"j M Y" %}
+        <strong>{{ name }}</strong> stops being {{ role }} of {{ committee }}, held since {{ since }}.
+      {% endblocktranslate %}
+    </p>
+    <p>{% translate "The committee is left with nobody in this role. To hand it to someone else instead, assign the committee rather than relinquishing it." %}</p>
+    <p class="text-[#3A4453]">{% translate "Their assignment moves to past committees and their earlier order stays on record." %}</p>
+  </div>
+</section>
+
+<form method="post" action="{% url 'orders:relinquish' assignment.pk %}" class="mt-8 max-w-2xl space-y-6" novalidate>
+  {% csrf_token %}
+  <div class="max-w-xs">
+    <label for="{{ form.order_date.id_for_label }}" class="block font-medium">{{ form.order_date.label }}</label>
+    <div class="mt-1">{{ form.order_date }}</div>
+    <p class="mt-1 text-sm text-[#556070]">{% translate "Today by default. An order cannot be dated in the future." %}</p>
+    {% if form.order_date.errors %}<p class="error-text mt-1 text-sm">{{ form.order_date.errors|join:" " }}</p>{% endif %}
+  </div>
+  <div>
+    <label for="{{ form.remarks.id_for_label }}" class="block font-medium">{{ form.remarks.label }} <span class="font-normal text-[#556070]">{% translate "(optional)" %}</span></label>
+    <div class="mt-1">{{ form.remarks }}</div>
+    {% if form.remarks.errors %}<p class="error-text mt-1 text-sm">{{ form.remarks.errors|join:" " }}</p>{% endif %}
+  </div>
+  <div class="flex flex-wrap items-center gap-4">
+    <button type="submit" class="btn-primary">{% translate "Issue relinquishment order" %}</button>
+    <a class="link" href="{% url 'assignments:directory' %}">{% translate "Leave it unchanged" %}</a>
+  </div>
+</form>
+{% endblock %}
