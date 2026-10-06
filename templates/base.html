@@ -160,10 +160,12 @@
       <ul class="mx-auto flex max-w-5xl flex-wrap gap-x-6 px-4 sm:px-6">
         <li><a class="nav-link" href="{% url 'assignments:dashboard' %}"{% if current == "assignments:dashboard" %} aria-current="page"{% endif %}>{% translate "Dashboard" %}</a></li>
         <li><a class="nav-link" href="{% url 'assignments:directory' %}"{% if current == "assignments:directory" %} aria-current="page"{% endif %}>{% translate "Directory" %}</a></li>
+        <li><a class="nav-link" href="{% url 'committees:list' %}"{% if current == "committees:list" or current == "committees:detail" %} aria-current="page"{% endif %}>{% translate "Committees" %}</a></li>
         <li><a class="nav-link" href="{% url 'accounts:workload' %}"{% if current == "accounts:workload" %} aria-current="page"{% endif %}>{% translate "Workload" %}</a></li>
         {% if user.is_principal %}
         <li><a class="nav-link" href="{% url 'orders:assign' %}"{% if current == "orders:assign" %} aria-current="page"{% endif %}>{% translate "Assign committee" %}</a></li>
         <li><a class="nav-link" href="{% url 'orders:register' %}"{% if current == "orders:register" or current == "orders:detail" %} aria-current="page"{% endif %}>{% translate "Orders" %}</a></li>
+        <li><a class="nav-link" href="{% url 'accounts:faculty_list' %}"{% if current == "accounts:faculty_list" or current == "accounts:faculty_detail" %} aria-current="page"{% endif %}>{% translate "Faculty" %}</a></li>
         <li><a class="nav-link" href="{% url 'audit:log' %}"{% if current == "audit:log" %} aria-current="page"{% endif %}>{% translate "Audit log" %}</a></li>
         {% endif %}
         <li><a class="nav-link" href="{% url 'accounts:profile' %}"{% if current == "accounts:profile" %} aria-current="page"{% endif %}>{% translate "Profile" %}</a></li>

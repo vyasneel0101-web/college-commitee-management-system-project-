@@ -56,14 +56,17 @@ class GovtClass(models.TextChoices):
 
 
 class UserQuerySet(models.QuerySet):
-    def faculty_with_counts(self):
+    def faculty_with_counts(self, include_inactive=False):
         """
-        Active staff annotated with `active_count`, their number of ACTIVE
+        Staff annotated with `active_count`, their number of ACTIVE
         assignments, busiest first. Superusers are technical operators, not
-        staff, and are excluded.
+        staff, and are excluded. Deactivated staff are excluded unless
+        `include_inactive` is set, which the faculty management list does so
+        that leavers stay visible to the Principal (BR-9).
         """
+        queryset = self if include_inactive else self.filter(is_active=True)
         return (
-            self.filter(is_active=True, is_superuser=False)
+            queryset.filter(is_superuser=False)
             .select_related("department")
             # "ACTIVE" is AssignmentStatus.ACTIVE; imported by value to avoid
             # a circular import between accounts and assignments.

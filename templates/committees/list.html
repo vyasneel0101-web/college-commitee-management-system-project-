@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Committees" %}{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Committees" %}</h1>
+    <p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "Every standing committee of the institute and who holds it now." %}</p>
+  </div>
+  {% if user.is_principal %}
+  <a class="btn-primary no-print" href="{% url 'committees:create' %}">{% translate "Add committee" %}</a>
+  {% endif %}
+</div>
+
+<table class="register mt-6">
+  <thead>
+    <tr>
+      <th scope="col">{% translate "Committee" %}</th>
+      <th scope="col">{% translate "Convener" %}</th>
+      <th scope="col">{% translate "Members" %}</th>
+      <th scope="col">{% translate "Template" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for committee in committees %}
+    <tr>
+      <td data-label="{% translate 'Committee' %}">
+        <a class="link font-semibold" href="{% url 'committees:detail' committee.pk %}">{{ committee.name }}</a>
+        <span class="text-sm text-[#556070]">{{ committee.code }}</span>
+        {% if not committee.is_active %}<span class="pill pill-history mt-1">{% translate "Inactive" %}</span>{% endif %}
+        {% if not committee.allows_multiple_members %}<span class="block text-sm text-[#556070]">{% translate "Convener only" %}</span>{% endif %}
+      </td>
+      <td data-label="{% translate 'Convener' %}">
+        {% for assignment in committee.held_by %}{% if assignment.role == "CONVENER" %}{{ assignment.faculty.full_name }}{% endif %}{% empty %}<span class="text-[#556070]">{% translate "Nobody" %}</span>{% endfor %}
+      </td>
+      <td data-label="{% translate 'Members' %}">
+        {% for assignment in committee.held_by %}{% if assignment.role == "MEMBER" %}{{ assignment.faculty.full_name }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}
+      </td>
+      <td data-label="{% translate 'Template' %}">
+        {% for template in committee.active_template %}{% blocktranslate with version=template.version %}Version {{ version }}{% endblocktranslate %}{% empty %}<span class="text-[#7A5A1F]">{% translate "None uploaded" %}</span>{% endfor %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

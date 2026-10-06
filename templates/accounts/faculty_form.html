@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% if person %}{% translate "Correct faculty record" %}{% else %}{% translate "Add faculty" %}{% endif %}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% if person %}{% translate "Correct faculty record" %}{% else %}{% translate "Add faculty" %}{% endif %}</h1>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "These details are printed on the orders issued to this person, so spell them as the office would." %}</p>
+
+{% if form.non_field_errors %}
+<div class="message message-error mt-6 max-w-2xl" role="alert">
+  {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" class="mt-6 max-w-2xl space-y-6" novalidate>
+  {% csrf_token %}
+  {% for field in form %}
+  <div>
+    <label for="{{ field.id_for_label }}" class="block font-medium">
+      {{ field.label }}{% if not field.field.required %} <span class="font-normal text-[#556070]">{% translate "(optional)" %}</span>{% endif %}
+    </label>
+    <div class="mt-1">{{ field }}</div>
+    {% if field.help_text %}<p class="mt-1 text-sm text-[#556070]">{{ field.help_text }}</p>{% endif %}
+    {% if field.errors %}<p class="error-text mt-1 text-sm">{{ field.errors|join:" " }}</p>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="flex flex-wrap items-center gap-4">
+    <button type="submit" class="btn-primary">{% translate "Save changes" %}</button>
+    <a class="link" href="{% url 'accounts:faculty_list' %}">{% translate "Back to faculty" %}</a>
+  </div>
+</form>
+
+<p class="mt-8 max-w-2xl text-sm text-[#556070]">{% translate "Role and sign-in access are not set here. A faculty member can never be made Principal through this form." %}</p>
+{% endblock %}

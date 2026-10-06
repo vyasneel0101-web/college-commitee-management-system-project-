@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ committee.name }}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{{ committee.name }}</h1>
+<p class="mt-1 text-[#556070]">{{ committee.code }}{% if not committee.is_active %} · {% translate "Inactive" %}{% endif %}</p>
+{% if committee.description %}<p class="mt-3 max-w-2xl text-[#3A4453]">{{ committee.description }}</p>{% endif %}
+
+{% if user.is_principal %}
+<div class="no-print mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+  <a class="btn-primary" href="{% url 'orders:assign' %}">{% translate "Assign committee" %}</a>
+  <a class="link" href="{% url 'committees:edit' committee.pk %}">{% translate "Edit committee" %}</a>
+  <a class="link" href="{% url 'committees:template' committee.pk %}">{% translate "Upload order template" %}</a>
+</div>
+{% endif %}
+
+<section class="mt-8" aria-labelledby="held-heading">
+  <h2 id="held-heading" class="text-lg font-semibold">{% translate "Held now" %}</h2>
+  {% if held_by %}
+  <table class="register mt-3">
+    <thead>
+      <tr>
+        <th scope="col">{% translate "Role" %}</th>
+        <th scope="col">{% translate "Held by" %}</th>
+        <th scope="col">{% translate "Department" %}</th>
+        <th scope="col">{% translate "Since" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for assignment in held_by %}
+      <tr>
+        <td data-label="{% translate 'Role' %}">{{ assignment.get_role_display }}</td>
+        <td data-label="{% translate 'Held by' %}">{{ assignment.faculty.salutation }} {{ assignment.faculty.full_name }}</td>
+        <td data-label="{% translate 'Department' %}">{{ assignment.faculty.department.name|default:"—" }}</td>
+        <td data-label="{% translate 'Since' %}" class="tabular-nums">{{ assignment.start_date|date:"j M Y" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="mt-3 max-w-2xl border-l-4 border-[#CBD2DB] bg-white px-4 py-3 text-[#3A4453]">{% translate "Nobody holds this committee at the moment." %}</p>
+  {% endif %}
+</section>
+
+{% if user.is_principal %}
+<section class="mt-10" aria-labelledby="templates-heading">
+  <h2 id="templates-heading" class="text-lg font-semibold">{% translate "Order templates" %}</h2>
+  <p class="mt-2 max-w-2xl text-sm text-[#3A4453]">{% translate "Earlier versions are kept because the orders issued from them must still read exactly as they did." %}</p>
+  {% if templates %}
+  <table class="register mt-3">
+    <thead>
+      <tr>
+        <th scope="col">{% translate "Version" %}</th>
+        <th scope="col">{% translate "Uploaded" %}</th>
+        <th scope="col">{% translate "By" %}</th>
+        <th scope="col">{% translate "In use" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for template in templates %}
+      <tr>
+        <td data-label="{% translate 'Version' %}" class="tabular-nums">{{ template.version }}</td>
+        <td data-label="{% translate 'Uploaded' %}" class="tabular-nums">{{ template.uploaded_at|date:"j M Y" }}</td>
+        <td data-label="{% translate 'By' %}">{{ template.uploaded_by.full_name }}</td>
+        <td data-label="{% translate 'In use' %}">{% if template.is_active %}<span class="pill pill-active">{% translate "In use" %}</span>{% else %}<span class="pill pill-history">{% translate "Superseded" %}</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="mt-3 max-w-2xl border-l-4 border-[#7A5A1F] bg-white px-4 py-3 text-[#3A4453]">{% translate "No template yet. Orders cannot be issued for this committee until one is uploaded." %}</p>
+  {% endif %}
+  <p class="mt-4 text-sm text-[#556070]">{% blocktranslate count counter=order_count %}{{ counter }} order issued for this committee.{% plural %}{{ counter }} orders issued for this committee.{% endblocktranslate %}</p>
+</section>
+{% endif %}
+{% endblock %}

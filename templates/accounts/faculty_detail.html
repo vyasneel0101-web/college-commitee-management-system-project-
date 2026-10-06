@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ person.full_name }}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{{ person.salutation }} {{ person.full_name }}</h1>
+<p class="mt-1 text-[#556070]">
+  {{ person.get_designation_display }}{% if person.department %}, {{ person.department.name }}{% endif %}
+  {% if not person.is_active %} · <span class="pill pill-history">{% translate "Deactivated" %}</span>{% endif %}
+</p>
+
+<div class="no-print mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+  <a class="link" href="{% url 'accounts:faculty_edit' person.pk %}">{% translate "Correct this record" %}</a>
+  {% if person.is_active and person.pk != user.pk %}
+  <a class="link" href="{% url 'accounts:faculty_deactivate' person.pk %}">{% translate "Deactivate" %}</a>
+  {% endif %}
+  <a class="link" href="{% url 'accounts:faculty_list' %}">{% translate "Back to faculty" %}</a>
+</div>
+
+<dl class="mt-8 max-w-3xl border border-[#CBD2DB] bg-white">
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Email address" %}</dt>
+    <dd class="break-all">{{ person.email }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Government class" %}</dt>
+    <dd>{{ person.get_govt_class_display|default:"—" }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Employee code" %}</dt>
+    <dd>{{ person.employee_code|default:"—" }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Joining date" %}</dt>
+    <dd class="tabular-nums">{{ person.joining_date|date:"j M Y"|default:"—" }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Mobile" %}</dt>
+    <dd class="tabular-nums">{{ person.mobile|default:"—" }}</dd>
+  </div>
+  <div class="px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Access" %}</dt>
+    <dd>{{ person.get_role_display }}</dd>
+  </div>
+</dl>
+
+<section class="mt-10" aria-labelledby="history-heading">
+  <h2 id="history-heading" class="text-lg font-semibold">{% translate "Committee history" %}</h2>
+  {% if assignments %}
+  <table class="register mt-3">
+    <thead>
+      <tr>
+        <th scope="col">{% translate "Committee" %}</th>
+        <th scope="col">{% translate "Role" %}</th>
+        <th scope="col">{% translate "Held" %}</th>
+        <th scope="col">{% translate "Status" %}</th>
+        <th scope="col">{% translate "Order" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for assignment in assignments %}
+      <tr>
+        <td data-label="{% translate 'Committee' %}">{{ assignment.committee.name }}</td>
+        <td data-label="{% translate 'Role' %}">{{ assignment.get_role_display }}</td>
+        <td data-label="{% translate 'Held' %}" class="tabular-nums">
+          {{ assignment.start_date|date:"j M Y" }}{% if assignment.end_date %} – {{ assignment.end_date|date:"j M Y" }}{% endif %}
+        </td>
+        <td data-label="{% translate 'Status' %}">{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}</td>
+        <td data-label="{% translate 'Order' %}" class="tabular-nums">
+          <a class="link" href="{% url 'orders:detail' assignment.issuing_order_id %}">{{ assignment.issuing_order.order_no }}</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="mt-3 max-w-2xl border-l-4 border-[#CBD2DB] bg-white px-4 py-3 text-[#3A4453]">{% translate "This person has never held a committee." %}</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Upload order template" %}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Upload order template" %}</h1>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% blocktranslate with name=committee.name %}The Word file that orders for {{ name }} are produced from. Uploading a new one does not change any order already issued.{% endblocktranslate %}</p>
+
+<form method="post" enctype="multipart/form-data" class="mt-6 max-w-2xl" novalidate>
+  {% csrf_token %}
+  <label for="{{ form.docx_file.id_for_label }}" class="block font-medium">{{ form.docx_file.label }}</label>
+  <div class="mt-1">{{ form.docx_file }}</div>
+  <p class="mt-1 text-sm text-[#556070]">{% translate "A .docx file under 2 MB. Macro-enabled files are rejected." %}</p>
+  {% if form.docx_file.errors %}<p class="error-text mt-2">{{ form.docx_file.errors|join:" " }}</p>{% endif %}
+  <div class="mt-6 flex flex-wrap items-center gap-4">
+    <button type="submit" class="btn-primary">{% translate "Upload template" %}</button>
+    <a class="link" href="{% url 'committees:detail' committee.pk %}">{% translate "Back to committee" %}</a>
+  </div>
+</form>
+
+<section class="mt-10 max-w-2xl" aria-labelledby="placeholders-heading">
+  <h2 id="placeholders-heading" class="text-lg font-semibold">{% translate "The file must contain these placeholders" %}</h2>
+  <p class="mt-2 text-sm text-[#3A4453]">{% translate "Type them into your Word file where the detail should appear. The upload is refused if any is missing, and the error names the missing ones." %}</p>
+  <ul class="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+    {% for name in required %}<li class="tabular-nums">&#123;&#123; {{ name }} &#125;&#125;</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

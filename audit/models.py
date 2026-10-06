@@ -19,6 +19,9 @@ class AuditAction:
     LOGIN_SUCCESS = "LOGIN_SUCCESS"
     LOGIN_FAILED = "LOGIN_FAILED"
     PROFILE_UPDATED = "PROFILE_UPDATED"
+    FACULTY_CREATED = "FACULTY_CREATED"
+    FACULTY_UPDATED = "FACULTY_UPDATED"
+    FACULTY_DEACTIVATED = "FACULTY_DEACTIVATED"
 
 
 ACTION_LABELS = {
@@ -35,6 +38,9 @@ ACTION_LABELS = {
     AuditAction.LOGIN_SUCCESS: _("Signed in"),
     AuditAction.LOGIN_FAILED: _("Failed sign-in"),
     AuditAction.PROFILE_UPDATED: _("Profile updated"),
+    AuditAction.FACULTY_CREATED: _("Faculty added"),
+    AuditAction.FACULTY_UPDATED: _("Faculty record corrected"),
+    AuditAction.FACULTY_DEACTIVATED: _("Faculty deactivated"),
 }
 
 
