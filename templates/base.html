@@ -95,16 +95,35 @@
       }
     }
 
+    /* This office prints things: the register must survive a black-and-white printer. */
+    @page { margin: 14mm; }
+    .print-only { display: none; }
     @media print {
       .no-print { display: none !important; }
-      body { background: #fff !important; color: #000 !important; }
+      .print-only { display: block; }
+      body { background: #fff !important; color: #000 !important; font-size: 10.5pt; }
+      a { color: #000 !important; text-decoration: none; }
+      main { max-width: none !important; padding: 0 !important; }
+      header, footer { border-color: #000 !important; }
       .demo-banner {
         position: static !important;
         background: #fff !important;
         color: #000 !important;
         border: 2px solid #000 !important;
       }
-      .register th { position: static; }
+      .register { border: 1px solid #000; }
+      .register thead { display: table-header-group; }
+      .register th {
+        position: static;
+        background: #fff !important;
+        color: #000 !important;
+        border-bottom: 1.5px solid #000;
+      }
+      .register td { border-bottom: 1px solid #777; }
+      .register tr { break-inside: avoid; }
+      .pill { border-color: #000 !important; color: #000 !important; }
+      h1, h2 { break-after: avoid; }
+      details summary::marker { content: ""; }
     }
   </style>
 </head>
@@ -153,6 +172,11 @@
     {% endif %}
   </header>
 
+  <div class="print-only" aria-hidden="true">
+    <p><strong>{{ institution_name }}</strong> — {% translate "Committee assignment register" %}</p>
+    <p>{% translate "Printed" %} {% now "j M Y" %}</p>
+  </div>
+
   <main id="main" class="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
     {% if messages %}
     <div class="mb-6 space-y-2" aria-live="polite">
@@ -177,6 +201,19 @@
       }
       setStickyTop();
       window.addEventListener("resize", setStickyTop);
+
+      // Print the contents of collapsed sections, then put them back as they were.
+      var reopened = [];
+      window.addEventListener("beforeprint", function () {
+        reopened = Array.prototype.filter.call(document.querySelectorAll("details"), function (element) {
+          return !element.open;
+        });
+        reopened.forEach(function (element) { element.open = true; });
+      });
+      window.addEventListener("afterprint", function () {
+        reopened.forEach(function (element) { element.open = false; });
+        reopened = [];
+      });
     })();
   </script>
 </body>
