@@ -130,6 +130,30 @@ REMARKS = {
     "EXAM": "Duties for the semester-end examinations will be allotted by the convener.",
 }
 
+# --minimal: the smallest set that still shows every behaviour — a hand-over,
+# a superseded record, history from last year and a committee held now.
+MINIMAL_DEPARTMENTS = [("CO", "Computer Engineering")]
+MINIMAL_COMMITTEES = [
+    ("TPU", "Training & Placement Unit", True),
+    ("EXAM", "Examination Committee", True),
+    ("LIB", "Library Committee", True),
+]
+MINIMAL_FACULTY = [
+    ("mihir.patel", "Shri", "Mihir Patel", LEC, C2, "CO", date(2012, 8, 16)),
+    ("kiran.vasava", "Shri", "Kiran Vasava", LEC, C2, "CO", date(2016, 1, 11)),
+]
+MINIMAL_HISTORY_2025_26 = [
+    ("TPU", "kiran.vasava", CON, date(2025, 6, 16)),
+    ("LIB", "mihir.patel", MEM, date(2025, 7, 1)),
+]
+# Kiran's TPU convenership stands into 2026-27, where Mihir supersedes it.
+MINIMAL_CARRIED_FORWARD = {("TPU", "kiran.vasava", CON)}
+MINIMAL_CURRENT_2026_27 = [
+    ("TPU", "mihir.patel", CON, date(2026, 6, 15)),
+    ("EXAM", "kiran.vasava", CON, date(2026, 6, 16)),
+    ("LIB", "mihir.patel", MEM, date(2026, 6, 22)),
+]
+
 
 class Command(BaseCommand):
     help = "Load fictional demo data. Refuses to run unless DEMO_MODE is True."
@@ -140,8 +164,19 @@ class Command(BaseCommand):
             action="store_true",
             help="Flush the database and demo media, then rebuild everything.",
         )
+        parser.add_argument(
+            "--minimal",
+            action="store_true",
+            help="Seed only the Principal, two faculty and three committees.",
+        )
 
-    def handle(self, *args, reset=False, **options):
+    def handle(self, *args, reset=False, minimal=False, **options):
+        self.departments = MINIMAL_DEPARTMENTS if minimal else DEPARTMENTS
+        self.committee_rows = MINIMAL_COMMITTEES if minimal else COMMITTEES
+        self.faculty_rows = MINIMAL_FACULTY if minimal else FACULTY
+        self.history = MINIMAL_HISTORY_2025_26 if minimal else HISTORY_2025_26
+        self.carried_forward = MINIMAL_CARRIED_FORWARD if minimal else CARRIED_FORWARD
+        self.current = MINIMAL_CURRENT_2026_27 if minimal else CURRENT_2026_27
         if not settings.DEMO_MODE:
             raise CommandError(
                 "seed_demo refuses to run because DEMO_MODE is False. "
@@ -156,7 +191,7 @@ class Command(BaseCommand):
             principal = self._person(PRINCIPAL, departments, Role.PRINCIPAL, mobile_index=1)
             faculty = {
                 row[0]: self._person(row, departments, Role.FACULTY, mobile_index=index)
-                for index, row in enumerate(FACULTY, start=2)
+                for index, row in enumerate(self.faculty_rows, start=2)
             }
             committees = self._committees()
             self._templates(committees, principal)
@@ -196,7 +231,7 @@ class Command(BaseCommand):
     def _departments(self):
         return {
             code: Department.objects.get_or_create(code=code, defaults={"name": name})[0]
-            for code, name in DEPARTMENTS
+            for code, name in self.departments
         }
 
     def _person(self, row, departments, role, *, mobile_index):
@@ -225,7 +260,7 @@ class Command(BaseCommand):
             code: Committee.objects.get_or_create(
                 code=code, defaults={"name": name, "allows_multiple_members": multiple}
             )[0]
-            for code, name, multiple in COMMITTEES
+            for code, name, multiple in self.committee_rows
         }
 
     def _templates(self, committees, principal):
@@ -266,13 +301,13 @@ class Command(BaseCommand):
             )
 
         carried = []
-        for row in HISTORY_2025_26:
+        for row in self.history:
             order = issue(row, years["2025-26"])
-            if row[:3] in CARRIED_FORWARD:
+            if row[:3] in self.carried_forward:
                 carried.append(order.created_assignments.get())
         expire_assignments_for_year(years["2025-26"], carry_forward=carried)
 
-        for row in CURRENT_2026_27:
+        for row in self.current:
             issue(row, years["2026-27"])
 
     def _report(self):

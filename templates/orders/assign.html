@@ -30,6 +30,7 @@
     <input id="faculty-filter" type="search" class="field mt-1" autocomplete="off" aria-controls="{{ form.faculty.id_for_label }}">
     <p id="faculty-filter-status" class="mt-1 text-sm text-[#556070]" aria-live="polite"></p>
     <div class="mt-2">{{ form.faculty }}</div>
+    <p id="faculty-chosen" class="mt-2 font-medium" aria-live="polite"></p>
     {% if form.faculty.errors %}<p class="error-text mt-1 text-sm">{{ form.faculty.errors|join:" " }}</p>{% endif %}
   </div>
 
@@ -67,13 +68,23 @@
     var filter = document.getElementById("faculty-filter");
     var select = document.getElementById("{{ form.faculty.id_for_label }}");
     var status = document.getElementById("faculty-filter-status");
+    var chosen = document.getElementById("faculty-chosen");
     if (!filter || !select) { return; }
-    var total = select.options.length;
+    var total = select.options.length - 1;  // the "choose" row is not a person
+
+    // Say in words who is selected: a dropdown's own label is easy to miss.
+    function showChoice() {
+      var option = select.options[select.selectedIndex];
+      chosen.textContent = (option && option.value) ? "{{ _('Selected:')|escapejs }} " + option.text : "";
+    }
+    select.addEventListener("change", showChoice);
+    showChoice();
     var template = "{{ _('%(shown)s of %(total)s shown')|escapejs }}";
     filter.addEventListener("input", function () {
       var terms = filter.value.trim().toLowerCase();
       var shown = 0;
       Array.prototype.forEach.call(select.options, function (option) {
+        if (!option.value) { return; }  // never hide the "choose" row
         var match = !terms || option.selected || option.text.toLowerCase().indexOf(terms) !== -1;
         option.hidden = !match;
         if (match) { shown += 1; }

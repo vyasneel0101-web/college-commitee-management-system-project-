@@ -10,7 +10,7 @@ faculty record.**
 | # | Debt | Why it matters | Fix | Effort |
 |---|---|---|---|---|
 | 1 | SQLite instead of PostgreSQL 18 | `select_for_update` is silently ignored on SQLite, so order numbering is not race-safe. Fine with one Principal clicking one button; not fine in production. | Change `DATABASE_URL`, fresh `migrate`. See `docs/09_LOCAL_POSTGRES.md`. | ~1 hour |
-| 2 | No test suite | Nothing prevents a regression in the supersession logic, which is what protects order history. | `docs/05_TESTING.md` §4 and §5 first — the assignment engine and order numbering. | ~1 day |
+| 2 | Test suite is partial | 152 tests cover the engine (97%), order generation (95%) and the permission matrix, 85% overall. Still missing: 100% on both services, the concurrency test (meaningless on SQLite), and notification tests. | Finish `docs/05_TESTING.md` §4 and §5 after PostgreSQL lands. | ~0.5 day |
 | 3 | Password auth instead of magic links | Shared demo passwords, no domain restriction. | `docs/03_SECURITY.md` §1. | ~0.5 day |
 | 4 | No permission matrix test | A new endpoint can ship unprotected and nobody notices. | `docs/05_TESTING.md` §3. | ~0.5 day |
 | 5 | Signature is a stored image | A rubber stamp, not a signature — anyone who reaches the file can produce a signed-looking order. | `docs/10_SIGNATURE.md`. Needs a policy decision from the college first. | Policy, then 1–3 days |

@@ -26,7 +26,9 @@ class AssignCommitteeForm(forms.Form):
         empty_label=_("Choose a committee"),
     )
     faculty = FacultyChoiceField(
-        label=_("Faculty member"), queryset=User.objects.none(), empty_label=None
+        label=_("Faculty member"),
+        queryset=User.objects.none(),
+        empty_label=_("Choose a faculty member"),
     )
     role = forms.ChoiceField(
         label=_("Role"), choices=AssignmentRole.choices, widget=forms.RadioSelect
@@ -47,7 +49,6 @@ class AssignCommitteeForm(forms.Form):
         self.fields["faculty"].queryset = User.objects.faculty_with_counts()
         for name in ("committee", "faculty", "order_date", "remarks"):
             self.fields[name].widget.attrs["class"] = "field"
-        self.fields["faculty"].widget.attrs["size"] = 8
         self.fields["order_date"].widget.attrs["max"] = timezone.localdate().isoformat()
 
 
