@@ -22,9 +22,7 @@
       {% for appointment in appointments %}
       <li>
         <strong>{{ appointment.holder.full_name }}</strong> — {{ appointment.role }}
-        <span class="text-[#556070]">
-          {% if appointment.holder.organisation %}· {{ appointment.holder.organisation }}{% else %}· {{ appointment.holder.get_designation_display }}{% endif %}
-        </span>
+        <span class="text-[#556070]">· {{ appointment.detail }}</span>
       </li>
       {% endfor %}
     </ul>

@@ -370,6 +370,115 @@ class TestAssignFlow:
         assert response["Location"] == reverse("orders:detail", kwargs={"pk": order.pk})
         assert order.created_assignments.get().faculty == faculty
 
+    def test_the_preview_describes_people_as_the_order_does(
+        self, principal_client, faculty, external_member, committee, year
+    ):
+        response = principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(
+                committee,
+                [
+                    (faculty, AssignmentRole.PRESIDING_OFFICER),
+                    (external_member, AssignmentRole.EXTERNAL_MEMBER),
+                ],
+            ),
+        )
+        html = response.content.decode()
+        assert escape(f"{faculty.get_designation_display()}, {faculty.department.name}") in html
+        assert escape(external_member.organisation) in html
+
+    def test_people_are_listed_in_the_order_they_were_named(
+        self, principal_client, faculty, other_faculty, third_faculty, committee, year
+    ):
+        principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(
+                committee,
+                [
+                    (third_faculty, AssignmentRole.PRESIDING_OFFICER),
+                    (faculty, AssignmentRole.MEMBER),
+                    (other_faculty, AssignmentRole.MEMBER),
+                ],
+                step="issue",
+                expected_superseded="none",
+            ),
+        )
+        order = Order.objects.get()
+        html = principal_client.get(
+            reverse("orders:detail", kwargs={"pk": order.pk})
+        ).content.decode()
+        positions = [
+            html.index(person.full_name)
+            for person in (third_faculty, faculty, other_faculty)
+        ]
+        assert positions == sorted(positions), "listed in the order they were named"
+
+    def test_rows_added_beyond_the_first_three_are_accepted(
+        self, principal_client, faculty, other_faculty, third_faculty, external_member, committee, year
+    ):
+        """The "Add another person" button extends the formset past its initial rows."""
+        principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(
+                committee,
+                [
+                    (faculty, AssignmentRole.PRESIDING_OFFICER),
+                    (other_faculty, AssignmentRole.MEMBER),
+                    (third_faculty, AssignmentRole.MEMBER),
+                    (external_member, AssignmentRole.EXTERNAL_MEMBER),
+                ],
+                step="issue",
+                expected_superseded="none",
+            ),
+        )
+        assert Order.objects.get().created_assignments.count() == 4
+
+    def test_empty_rows_between_filled_ones_are_ignored(
+        self, principal_client, faculty, other_faculty, committee, year
+    ):
+        payload = assign_payload(
+            committee,
+            [
+                (faculty, AssignmentRole.PRESIDING_OFFICER),
+                (None, ""),
+                (other_faculty, AssignmentRole.MEMBER),
+            ],
+            step="issue",
+            expected_superseded="none",
+        )
+        principal_client.post(reverse("orders:assign"), payload)
+        assert Order.objects.get().created_assignments.count() == 2
+
+    def test_a_committee_without_a_template_cannot_be_used(
+        self, principal_client, faculty, db, year
+    ):
+        from committees.models import Committee
+
+        bare = Committee.objects.create(code="NEW", name="Committee Without Template")
+        response = principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(bare, [(faculty, AssignmentRole.PRESIDING_OFFICER)]),
+        )
+        assert "no active order template" in response.content.decode()
+        assert Order.objects.count() == 0
+
+    def test_issuing_the_same_preview_twice_does_not_duplicate(
+        self, principal_client, faculty, committee, year
+    ):
+        """A second click of Issue order must not produce a second order."""
+        payload = assign_payload(
+            committee,
+            [(faculty, AssignmentRole.PRESIDING_OFFICER)],
+            step="issue",
+            expected_superseded="none",
+        )
+        first = principal_client.post(reverse("orders:assign"), payload)
+        second = principal_client.post(reverse("orders:assign"), payload)
+        assert first.status_code == 302
+        assert second.status_code == 200, "the repeat is refused, not redirected"
+        assert "is already Presiding Officer" in second.content.decode()
+        assert Order.objects.count() == 1
+
     def test_issuing_without_a_preview_is_refused(
         self, principal_client, faculty, committee, year
     ):

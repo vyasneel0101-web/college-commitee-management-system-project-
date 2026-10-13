@@ -25,6 +25,17 @@ from .models import Order
 DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
 
+def _describe(holder):
+    """Designation and department, or an external member's organisation."""
+    organisation = getattr(holder, "organisation", None)
+    if organisation:
+        return organisation
+    parts = [holder.get_designation_display()]
+    if holder.department:
+        parts.append(holder.department.name)
+    return ", ".join(part for part in parts if part)
+
+
 def _expected_superseded_id(post):
     """The holder the Principal saw in the preview: an assignment id, or None for nobody."""
     value = post.get("expected_superseded", "")
@@ -89,7 +100,11 @@ def assign(request):
         return render(request, "orders/assign.html", context)
     context["preview"] = preview
     context["appointments"] = [
-        {"holder": holder, "role": AssignmentRole(role).label}
+        {
+            "holder": holder,
+            "role": AssignmentRole(role).label,
+            "detail": _describe(holder),
+        }
         for holder, role in details["appointments"]
     ]
     return render(request, "orders/assign_preview.html", context)
@@ -117,7 +132,11 @@ def detail(request, pk):
     )
     context = {
         "order": order,
-        "created": list(order.created_assignments.select_related("faculty__department")),
+        "created": list(
+            order.created_assignments.select_related(
+                "faculty__department", "external_member"
+            ).order_by("pk")
+        ),
         "ended": list(order.ended_assignments.select_related("faculty")),
     }
     return render(request, "orders/detail.html", context)
