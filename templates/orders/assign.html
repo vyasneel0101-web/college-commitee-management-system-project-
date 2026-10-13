@@ -5,44 +5,55 @@
 
 {% block content %}
 <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Assign committee" %}</h1>
-<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "Choose the committee, the faculty member and their role. You will see exactly what the order does before it is issued." %}</p>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "Choose the committee, then name everyone the order appoints. You will see exactly what the order does before it is issued." %}</p>
 
-{% if form.non_field_errors %}
+{% if form.non_field_errors or formset.non_form_errors %}
 <div class="message message-error mt-6 max-w-2xl" role="alert">
   {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+  {% for error in formset.non_form_errors %}<p>{{ error }}</p>{% endfor %}
 </div>
 {% endif %}
 
-<form method="post" action="{% url 'orders:assign' %}" class="mt-6 max-w-2xl space-y-7" novalidate>
+<form method="post" action="{% url 'orders:assign' %}" class="mt-6 max-w-3xl space-y-7" novalidate>
   {% csrf_token %}
   <input type="hidden" name="step" value="preview">
 
-  <div>
+  <div class="max-w-xl">
     <label for="{{ form.committee.id_for_label }}" class="block font-medium">{{ form.committee.label }}</label>
     <div class="mt-1">{{ form.committee }}</div>
     {% if form.committee.errors %}<p class="error-text mt-1 text-sm">{{ form.committee.errors|join:" " }}</p>{% endif %}
   </div>
 
-  <div>
-    <label for="{{ form.faculty.id_for_label }}" class="block font-medium">{{ form.faculty.label }}</label>
-    <p class="mt-1 text-sm text-[#556070]">{% translate "Each name shows the department and how many committees that person already holds." %}</p>
-    <label for="faculty-filter" class="mt-3 block text-sm font-medium">{% translate "Find by name or department" %}</label>
-    <input id="faculty-filter" type="search" class="field mt-1" autocomplete="off" aria-controls="{{ form.faculty.id_for_label }}">
-    <p id="faculty-filter-status" class="mt-1 text-sm text-[#556070]" aria-live="polite"></p>
-    <div class="mt-2">{{ form.faculty }}</div>
-    <p id="faculty-chosen" class="mt-2 font-medium" aria-live="polite"></p>
-    {% if form.faculty.errors %}<p class="error-text mt-1 text-sm">{{ form.faculty.errors|join:" " }}</p>{% endif %}
-  </div>
-
   <fieldset>
-    <legend class="font-medium">{{ form.role.label }}</legend>
-    <p class="mt-1 text-sm text-[#556070]">{% translate "A committee has one convener: a new convener supersedes the current one. Members are added alongside existing members." %}</p>
-    <div class="mt-2 flex flex-wrap gap-x-8 gap-y-2">
-      {% for radio in form.role %}
-      <label class="flex items-center gap-2" for="{{ radio.id_for_label }}">{{ radio.tag }} {{ radio.choice_label }}</label>
-      {% endfor %}
-    </div>
-    {% if form.role.errors %}<p class="error-text mt-1 text-sm">{{ form.role.errors|join:" " }}</p>{% endif %}
+    <legend class="font-medium">{% translate "People this order appoints" %}</legend>
+    <p class="mt-1 text-sm text-[#556070]">{% translate "A committee has one Presiding Officer or one Nodal Officer, and any number of Members. Naming a new one supersedes the current one." %}</p>
+    {{ formset.management_form }}
+    <table class="register mt-3" id="appointments">
+      <thead>
+        <tr>
+          <th scope="col" class="w-12">{% translate "Sr." %}</th>
+          <th scope="col">{% translate "Person" %}</th>
+          <th scope="col">{% translate "Role" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in formset %}
+        <tr>
+          <td data-label="{% translate 'Sr.' %}" class="tabular-nums">{{ forloop.counter }}</td>
+          <td data-label="{% translate 'Person' %}">
+            {{ row.person }}
+            {% if row.person.errors %}<p class="error-text mt-1 text-sm">{{ row.person.errors|join:" " }}</p>{% endif %}
+          </td>
+          <td data-label="{% translate 'Role' %}">
+            {{ row.role }}
+            {% if row.role.errors %}<p class="error-text mt-1 text-sm">{{ row.role.errors|join:" " }}</p>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="button" class="link no-print mt-3" id="add-person">{% translate "Add another person" %}</button>
+    <p class="mt-1 text-sm text-[#556070]">{% translate "Leave spare rows empty. Somebody from outside the college can only be appointed as External Member." %}</p>
   </fieldset>
 
   <div class="max-w-xs">
@@ -52,50 +63,53 @@
     {% if form.order_date.errors %}<p class="error-text mt-1 text-sm">{{ form.order_date.errors|join:" " }}</p>{% endif %}
   </div>
 
-  <div>
+  <div class="max-w-xl">
+    <label for="{{ form.references.id_for_label }}" class="block font-medium">{{ form.references.label }} <span class="font-normal text-[#556070]">{% translate "(optional)" %}</span></label>
+    <div class="mt-1">{{ form.references }}</div>
+    <p class="mt-1 text-sm text-[#556070]">{% translate "The circular, Act or notification this order acts under, printed above the body." %}</p>
+    {% if form.references.errors %}<p class="error-text mt-1 text-sm">{{ form.references.errors|join:" " }}</p>{% endif %}
+  </div>
+
+  <div class="max-w-xl">
     <label for="{{ form.remarks.id_for_label }}" class="block font-medium">{{ form.remarks.label }} <span class="font-normal text-[#556070]">{% translate "(optional)" %}</span></label>
     <div class="mt-1">{{ form.remarks }}</div>
-    <p class="mt-1 text-sm text-[#556070]">{% translate "Printed on templates that include remarks, such as the Examination Committee circular." %}</p>
     {% if form.remarks.errors %}<p class="error-text mt-1 text-sm">{{ form.remarks.errors|join:" " }}</p>{% endif %}
   </div>
 
   <button type="submit" class="btn-primary">{% translate "Preview order" %}</button>
 </form>
 
-<script>
-  // Narrow the faculty list as the Principal types. The <select> still works without this.
-  (function () {
-    var filter = document.getElementById("faculty-filter");
-    var select = document.getElementById("{{ form.faculty.id_for_label }}");
-    var status = document.getElementById("faculty-filter-status");
-    var chosen = document.getElementById("faculty-chosen");
-    if (!filter || !select) { return; }
-    var total = select.options.length - 1;  // the "choose" row is not a person
+<template id="appointment-row">
+  <tr>
+    <td data-label="{% translate 'Sr.' %}" class="tabular-nums"></td>
+    <td data-label="{% translate 'Person' %}">{{ formset.empty_form.person }}</td>
+    <td data-label="{% translate 'Role' %}">{{ formset.empty_form.role }}</td>
+  </tr>
+</template>
 
-    // Say in words who is selected: a dropdown's own label is easy to miss.
-    function showChoice() {
-      var option = select.options[select.selectedIndex];
-      chosen.textContent = (option && option.value) ? "{{ _('Selected:')|escapejs }} " + option.text : "";
-    }
-    select.addEventListener("change", showChoice);
-    showChoice();
-    var template = "{{ _('%(shown)s of %(total)s shown')|escapejs }}";
-    filter.addEventListener("input", function () {
-      var terms = filter.value.trim().toLowerCase();
-      var shown = 0;
-      Array.prototype.forEach.call(select.options, function (option) {
-        if (!option.value) { return; }  // never hide the "choose" row
-        var match = !terms || option.selected || option.text.toLowerCase().indexOf(terms) !== -1;
-        option.hidden = !match;
-        if (match) { shown += 1; }
+<script>
+  // Add a row to the table of people. The form works without this: three
+  // empty rows are always available, and spare ones are ignored.
+  (function () {
+    var button = document.getElementById("add-person");
+    var table = document.querySelector("#appointments tbody");
+    var template = document.getElementById("appointment-row");
+    var total = document.getElementById("id_form-TOTAL_FORMS");
+    var maximum = document.getElementById("id_form-MAX_NUM_FORMS");
+    if (!button || !table || !template || !total) { return; }
+
+    button.addEventListener("click", function () {
+      var index = parseInt(total.value, 10);
+      if (maximum && index >= parseInt(maximum.value, 10)) { return; }
+      var row = template.content.cloneNode(true);
+      row.querySelectorAll("select").forEach(function (field) {
+        field.name = field.name.replace("__prefix__", index);
+        field.id = field.id.replace("__prefix__", index);
       });
-      status.textContent = terms ? template.replace("%(shown)s", shown).replace("%(total)s", total) : "";
-    });
-    filter.addEventListener("keydown", function (event) {
-      if (event.key === "Enter" || event.key === "ArrowDown") {
-        event.preventDefault();
-        select.focus();
-      }
+      row.querySelector("td").textContent = index + 1;
+      table.appendChild(row);
+      total.value = index + 1;
+      table.lastElementChild.querySelector("select").focus();
     });
   })();
 </script>

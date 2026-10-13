@@ -33,6 +33,40 @@ class Department(models.Model):
         super().save(*args, **kwargs)
 
 
+class ExternalMember(models.Model):
+    """
+    Somebody appointed to a committee who does not work for the college and so
+    has no account — for example the external member of the Internal Complaint
+    Committee (docs/11_REAL_ORDERS.md §3).
+
+    They never sign in. The record exists so their name and standing can be
+    printed on the order and kept in the register.
+    """
+
+    salutation = models.CharField(_("salutation"), max_length=10, blank=True)
+    full_name = models.CharField(_("full name"), max_length=150)
+    organisation = models.CharField(
+        _("organisation"),
+        max_length=200,
+        help_text=_("Printed where a staff member's designation would appear."),
+    )
+    is_active = models.BooleanField(_("active"), default=True)
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+
+    class Meta:
+        ordering = ["full_name"]
+        verbose_name = _("external member")
+        verbose_name_plural = _("external members")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["full_name", "organisation"], name="uniq_external_member"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.full_name} ({self.organisation})"
+
+
 class Role(models.TextChoices):
     FACULTY = "FACULTY", _("Faculty")
     PRINCIPAL = "PRINCIPAL", _("Principal")

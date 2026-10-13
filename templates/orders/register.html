@@ -40,7 +40,7 @@
       <td data-label="{% translate 'Date' %}" class="tabular-nums">{{ order.order_date|date:"j M Y" }}</td>
       <td data-label="{% translate 'Committee' %}">{{ order.committee.name }}</td>
       <td data-label="{% translate 'Issued to' %}">
-        {% for assignment in order.created_assignments.all %}{{ assignment.faculty.full_name }} <span class="text-sm text-[#556070]">{{ assignment.get_role_display }}</span>{% if not forloop.last %}<br>{% endif %}{% endfor %}
+        {% for assignment in order.created_assignments.all %}{{ assignment.holder_name }} <span class="text-sm text-[#556070]">{{ assignment.get_role_display }}</span>{% if not forloop.last %}<br>{% endif %}{% endfor %}
       </td>
       <td data-label="{% translate 'Assignment now' %}">
         {% for assignment in order.created_assignments.all %}{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}{% endfor %}

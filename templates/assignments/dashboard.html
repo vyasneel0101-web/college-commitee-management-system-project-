@@ -91,7 +91,7 @@
           <td data-label="{% translate 'Status' %}">
             {% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}
             {% if assignment.superseded_by %}
-            <span class="mt-1 block text-sm text-[#556070]">{% blocktranslate with name=assignment.superseded_by.faculty.full_name %}Handed to {{ name }}{% endblocktranslate %}</span>
+            <span class="mt-1 block text-sm text-[#556070]">{% blocktranslate with name=assignment.superseded_by.holder_name %}Handed to {{ name }}{% endblocktranslate %}</span>
             {% endif %}
           </td>
           <td data-label="{% translate 'Order' %}" class="tabular-nums">

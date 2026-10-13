@@ -25,23 +25,22 @@ and the document must render a member table rather than one name.
 
 ## 2. The roles are not "convener" and "member"
 
-Observed, across three orders:
+Observed, across three orders, and confirmed by the college as the **complete**
+list — there are no others:
 
-| Role seen | Order |
+| Role | Seen in |
 |---|---|
 | Presiding Officer | Internal Complaint Committee |
+| Nodal Officer | Academic Bank of Credits |
 | Member | all three |
 | External Member | Internal Complaint Committee |
-| નોડલ ઓફિસર (Nodal Officer) | Academic Bank of Credits |
-| સભ્ય (Member) | Academic Bank of Credits |
 
-"Convener" appears in none of them. The role list must become data the office
-can extend, not a fixed pair in code — or at minimum a longer `TextChoices`
-including Presiding Officer, Nodal Officer, Member and External Member.
+"Convener" appears in none of them and is being removed.
 
-**This also breaks the `uniq_active_convener` constraint as written.** The rule
-is really "at most one *presiding* role per committee", and which roles count
-as presiding is now a property of the role, not a hardcoded value.
+**This replaces the `uniq_active_convener` constraint.** The real rule is that a
+committee has at most one person in charge: one Presiding Officer *or* one
+Nodal Officer, never both and never two. Member and External Member are
+unlimited.
 
 ## 3. Some members are not college staff
 
@@ -59,29 +58,18 @@ The same order names **Ms. G. V. Jobanputra, Counter attendant, Library**. The
 word "faculty" is too narrow throughout the interface and the model: these are
 staff, and some are not teaching staff.
 
-## 5. The order number format is different
+## 5. The order number format is different — deferred
 
-Observed: `મપોભુ/GPB/૪૨૯`, `સપોભુ/GPB[ESTT]564`, `સપોભુ/GPB/મહેમ/૨૧૪`.
+Observed: `મપોભુ/GPB/૪૨૯`, `સપોભુ/GPB <handwritten> 564`, `સપોભુ/GPB/મહેમ/૨૧૪`.
 
-So the real shape is roughly:
+The serials are in the hundreds (429, 564, 214), carry no academic year, and
+at least one has a handwritten token between `GPB` and the serial that I could
+not read reliably from the photograph — do not trust any transcription of it
+until the office confirms what it is.
 
-```
-<institution in Gujarati>/GPB[/<section>]/<serial>
-```
-
-- There is a **section token** — `ESTT` (establishment), `મહેમ` — not a
-  committee code.
-- The serial looks like a single running number per section, in the hundreds
-  (429, 564, 214), **not** a per-committee sequence restarting at 001.
-- Gujarati orders print the numerals in Gujarati (૪૨૯).
-- No academic year appears in the number at all.
-
-Our `GPB/TPU/2026-27/001` is wrong on every count. `next_order_no()` and
-`OrderSequence` must change — the sequence key is the section (or the whole
-office), not the committee.
-
-**Still to confirm with the office:** what the section tokens mean, whether the
-serial restarts each calendar year or each academic year, and who allocates it.
+**Decision (13 Oct 2026): keep `GPB/{COMMITTEE}/{YEAR}/{SEQ:03d}` for now.**
+Changing it is a single function, `orders/services.py::next_order_no()`, so it
+costs nothing to defer until the office explains their scheme.
 
 ## 6. Orders cite references
 
@@ -92,12 +80,12 @@ Two of the three begin with the authority they act under:
 
 The order needs an optional free-text references block, printed above the body.
 
-## 7. Both languages are in use
+## 7. Language: English only
 
-Two Gujarati, one English, from the same office. The interface strings are
-already wrapped for translation; the templates themselves carry the language,
-so a Gujarati committee template produces a Gujarati order with no code change.
-Gujarati numerals in the order number would need a conversion step.
+Two of the three orders are in Gujarati, but the college has confirmed the
+system only needs to produce **English** orders. Interface strings stay wrapped
+for translation, since that costs nothing, but no Gujarati templates, fonts or
+numeral conversion are needed.
 
 ## 8. Letterhead and footer details
 
@@ -118,18 +106,16 @@ the real list must come from the office.
 
 ## What this means for the build
 
-| # | Change | Size |
+| # | Change | Status |
 |---|---|---|
-| 1 | One order creates many assignments: model, service, assign flow, `{{ member_list }}` in the template | ~4–6 hrs |
-| 2 | Configurable roles, and "one presiding role per committee" replacing the convener constraint | ~2 hrs |
-| 3 | External members who are not users | ~2 hrs |
-| 4 | Rename faculty → staff in model help, interface copy and screens | ~1 hr |
-| 5 | New numbering: section-based serial, no academic year | ~1–2 hrs |
-| 6 | References block on orders | ~30 min |
-| 7 | Real departments, real committees, real templates | data entry |
-
-Roughly **10–14 hours**, and it touches the parts of the data model that were
-most settled. Better now than after the college is depending on it.
+| 1 | One order creates many assignments, with `{{ member_list }}` in the template | **Done** |
+| 2 | The four real roles, and one person in charge per committee | **Done** |
+| 3 | External members who are not users | **Done** |
+| 4 | References block on orders | **Done** |
+| 5 | A template matching their multi-member format | **Done** — `templates/demo/order_template_COMMITTEE.docx` |
+| 6 | Rename faculty → staff throughout the interface copy | Pending, ~1 hr |
+| 7 | New numbering scheme | Deferred until the office explains theirs |
+| 8 | Real departments, committees and templates | Data entry, once the office sends them |
 
 ## Questions for the office
 

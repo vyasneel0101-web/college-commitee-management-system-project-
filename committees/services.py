@@ -8,7 +8,7 @@ from django.db import transaction
 from django.utils.translation import gettext as _
 from docx.opc.exceptions import OpcError
 from docxtpl import DocxTemplate
-from jinja2 import TemplateError
+from jinja2 import TemplateError, meta
 from jinja2.sandbox import SandboxedEnvironment
 from lxml.etree import XMLSyntaxError
 
@@ -18,21 +18,30 @@ from core.exceptions import TemplateRejected
 
 from .models import CommitteeTemplate
 
-REQUIRED_PLACEHOLDERS = frozenset(
+# Every template needs these.
+CORE_PLACEHOLDERS = frozenset(
     {
         "order_no",
         "order_date",
-        "faculty_salutation",
-        "faculty_name",
-        "faculty_designation",
-        "faculty_department",
         "committee_name",
-        "assignment_role",
         "academic_year",
         "principal_name",
         "principal_signature",
     }
 )
+# ...and then either a table of everyone appointed, or the single-person fields.
+MEMBER_LIST_PLACEHOLDER = "member_list"
+SINGLE_PERSON_PLACEHOLDERS = frozenset(
+    {
+        "faculty_salutation",
+        "faculty_name",
+        "faculty_designation",
+        "faculty_department",
+        "assignment_role",
+    }
+)
+REQUIRED_PLACEHOLDERS = CORE_PLACEHOLDERS | SINGLE_PERSON_PLACEHOLDERS
+
 MAX_TEMPLATE_BYTES = 2 * 1024 * 1024
 MAX_UNCOMPRESSED_BYTES = 20 * 1024 * 1024
 ZIP_MAGIC = b"PK\x03\x04"
@@ -75,9 +84,13 @@ def validate_template_file(uploaded_file):
 
     uploaded_file.seek(0)
     try:
-        found = DocxTemplate(uploaded_file).get_undeclared_template_variables(
-            jinja_env=SandboxedEnvironment()
-        )
+        template = DocxTemplate(uploaded_file)
+        template.init_docx(reload=False)
+        # patch_xml turns docxtpl's row and paragraph tags ({%tr ... %},
+        # {%p ... %}) into ordinary Jinja ones; without it a template that
+        # loops over a member table fails to parse.
+        xml = template.patch_xml(template.get_xml())
+        found = meta.find_undeclared_variables(SandboxedEnvironment().parse(xml))
     except (OpcError, KeyError, ValueError, XMLSyntaxError, TemplateError, zipfile.BadZipFile) as exc:
         raise TemplateRejected(
             _("The template could not be read: %(error)s") % {"error": exc}
@@ -85,11 +98,17 @@ def validate_template_file(uploaded_file):
     finally:
         uploaded_file.seek(0)
 
-    missing = sorted(REQUIRED_PLACEHOLDERS - found)
+    missing = sorted(CORE_PLACEHOLDERS - found)
+    if MEMBER_LIST_PLACEHOLDER not in found:
+        # No member table, so the single-person fields must all be present.
+        missing += sorted(SINGLE_PERSON_PLACEHOLDERS - found)
     if missing:
         raise TemplateRejected(
-            _("The template is missing %(names)s. Add them and upload again.")
-            % {"names": ", ".join("{{ %s }}" % name for name in missing)}
+            _(
+                "The template is missing %(names)s. Add them and upload again, or use "
+                "{{ member_list }} to print a table of everyone appointed."
+            )
+            % {"names": ", ".join("{{ %s }}" % name for name in sorted(set(missing)))}
         )
     return sorted(found)
 

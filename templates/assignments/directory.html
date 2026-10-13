@@ -55,10 +55,10 @@
       </td>
       <td data-label="{% translate 'Role' %}">{{ assignment.get_role_display }}</td>
       <td data-label="{% translate 'Held by' %}">
-        {{ assignment.faculty.salutation }} {{ assignment.faculty.full_name }}
-        <span class="block text-sm text-[#556070]">{{ assignment.faculty.get_designation_display }}</span>
+        {{ assignment.holder.salutation }} {{ assignment.holder_name }}
+        <span class="block text-sm text-[#556070]">{{ assignment.holder_detail }}</span>
       </td>
-      <td data-label="{% translate 'Department' %}">{{ assignment.faculty.department.name|default:"—" }}</td>
+      <td data-label="{% translate 'Department' %}">{% if assignment.faculty %}{{ assignment.faculty.department.name|default:"—" }}{% else %}<span class="text-[#7A5A1F]">{% translate "External" %}</span>{% endif %}</td>
       <td data-label="{% translate 'Since' %}" class="tabular-nums">{{ assignment.start_date|date:"j M Y" }}</td>
     </tr>
     {% endfor %}

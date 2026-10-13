@@ -58,6 +58,14 @@ class PreviewOutdated(DomainError):
     )
 
 
+class NoAppointments(DomainError):
+    default_message = _("Name at least one person on the order.")
+
+
+class DuplicateAppointment(DomainError):
+    default_message = _("The same person is named twice on this order.")
+
+
 class AssignmentNotActive(DomainError):
     default_message = _("This assignment has already ended, so it cannot be ended again.")
 

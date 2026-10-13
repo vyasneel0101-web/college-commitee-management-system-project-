@@ -18,11 +18,12 @@ from docx.shared import Mm
 from docxtpl import DocxTemplate, InlineImage
 from jinja2.sandbox import SandboxedEnvironment
 
-from assignments.models import AssignmentRole, AssignmentStatus
+from accounts.models import ExternalMember
+from assignments.models import LEAD_ROLES, AssignmentRole, AssignmentStatus
 from assignments.services import (
     assign_committee,
     cancel_assignment,
-    current_convener,
+    current_lead,
     relinquish_assignment,
     restore_superseded,
     validate_assignment,
@@ -32,6 +33,8 @@ from audit.models import AuditAction
 from core.exceptions import (
     AssignmentNotActive,
     CancellationReasonRequired,
+    DuplicateAppointment,
+    NoAppointments,
     NotPrincipal,
     OrderAlreadyCancelled,
     OrderDateInvalid,
@@ -91,10 +94,19 @@ def peek_next_order_no(academic_year, committee) -> str:
     return _format_order_no(academic_year, committee, (last or 0) + 1)
 
 
-def _check_assignment_order(*, committee, faculty, role, order_date, issued_by, academic_year):
-    """Every check an assignment order must pass. Returns (year, template, previous holder)."""
+def _check_assignment_order(
+    *, committee, appointments, order_date, issued_by, academic_year
+):
+    """
+    Every check an assignment order must pass, for all of its appointments.
+
+    Returns (academic year, template, the lead who would be superseded or None).
+    Writes nothing.
+    """
     if not issued_by.is_principal:
         raise NotPrincipal()
+    if not appointments:
+        raise NoAppointments()
     if academic_year is None:
         academic_year = AcademicYear.objects.current()
     if order_date > timezone.localdate():
@@ -104,16 +116,36 @@ def _check_assignment_order(*, committee, faculty, role, order_date, issued_by, 
             _("The order date %(date)s is outside the academic year %(year)s.")
             % {"date": order_date.strftime(DOCUMENT_DATE_FORMAT), "year": academic_year.label}
         )
-    validate_assignment(faculty=faculty, committee=committee, role=role, order_date=order_date)
+
+    seen = set()
+    lead_roles_named = 0
+    for holder, role in appointments:
+        key = (type(holder).__name__, holder.pk, role)
+        if key in seen:
+            raise DuplicateAppointment(
+                _("%(name)s is named twice in the same role on this order.")
+                % {"name": holder.full_name}
+            )
+        seen.add(key)
+        if role in LEAD_ROLES:
+            lead_roles_named += 1
+        validate_assignment(
+            holder=holder, committee=committee, role=role, order_date=order_date
+        )
+    if lead_roles_named > 1:
+        raise DuplicateAppointment(
+            _("An order can name only one Presiding Officer or Nodal Officer.")
+        )
+
     template = committee.templates.filter(is_active=True).first()
     if template is None:
         raise TemplateMissing()
-    previous_holder = current_convener(committee) if role == AssignmentRole.CONVENER else None
-    return academic_year, template, previous_holder
+    previous_lead = current_lead(committee) if lead_roles_named else None
+    return academic_year, template, previous_lead
 
 
 def preview_assignment_order(
-    *, committee, faculty, role, order_date, issued_by, academic_year=None
+    *, committee, appointments, order_date, issued_by, academic_year=None
 ):
     """
     Run every check issue_assignment_order runs and describe what it would do.
@@ -121,10 +153,9 @@ def preview_assignment_order(
     Invariant: writes nothing. The order number shown is expected, not
     reserved; the real number is assigned when the order is issued.
     """
-    academic_year, template, previous_holder = _check_assignment_order(
+    academic_year, template, previous_lead = _check_assignment_order(
         committee=committee,
-        faculty=faculty,
-        role=role,
+        appointments=appointments,
         order_date=order_date,
         issued_by=issued_by,
         academic_year=academic_year,
@@ -133,72 +164,107 @@ def preview_assignment_order(
         academic_year=academic_year,
         expected_order_no=peek_next_order_no(academic_year, committee),
         template=template,
-        previous_holder=previous_holder,
+        previous_holder=previous_lead,
     )
+
+
+def _member_rows(appointments):
+    """The table of people as the order document prints it."""
+    rows = []
+    for number, (holder, role) in enumerate(appointments, start=1):
+        external = isinstance(holder, ExternalMember)
+        rows.append(
+            {
+                "sr": number,
+                "salutation": holder.salutation,
+                "name": holder.full_name,
+                "designation": holder.organisation
+                if external
+                else holder.get_designation_display(),
+                "department": ""
+                if external
+                else (holder.department.name if holder.department else ""),
+                "role": str(AssignmentRole(role).label),
+                "is_external": external,
+            }
+        )
+    return rows
 
 
 @transaction.atomic
 def issue_assignment_order(
     *,
     committee,
-    faculty,
-    role,
+    appointments,
     order_date,
     issued_by,
     academic_year=None,
     effective_date=None,
     remarks="",
+    references="",
     expected_superseded_id=NOT_CHECKED,
     request=None,
 ):
     """
-    Issue one assignment order: validate, number, render, store, record, assign.
+    Issue one order appointing one or more people to a committee.
+
+    `appointments` is a sequence of (holder, role) pairs, where a holder is a
+    User or an ExternalMember. Real orders name between two and eight people
+    (docs/11_REAL_ORDERS.md §1).
 
     Invariants:
-    - All or nothing. The order row, the assignment, any supersession, the
-      sequence increment and the audit entries commit together; on failure
-      the stored file is removed and nothing remains.
-    - BR-1: the assignment exists only together with the order that created it.
+    - All or nothing. The order row, every assignment, any supersession, the
+      sequence increment and the audit entries commit together; on failure the
+      stored file is removed and nothing remains.
+    - BR-1: assignments exist only together with the order that created them.
     - BR-5: the number comes from next_order_no() and is never reused.
     - BR-7: the rendered .docx is stored once and never regenerated.
-    - If `expected_superseded_id` is given (the holder the Principal saw in
-      the preview, or None), the order is refused when the holder who would
-      actually be superseded is different.
-    - Under DEMO_MODE the specimen line is the first paragraph of the
-      document. There is no argument that turns it off.
-    - The render context is built from database objects only and rendered in
-      a sandboxed Jinja environment.
+    - At most one person in charge is named, and appointing them supersedes
+      the committee's current lead.
+    - If `expected_superseded_id` is given (what the Principal saw in the
+      preview, or None), the order is refused when the lead who would actually
+      be superseded is different.
+    - Under DEMO_MODE the specimen line is the first paragraph. There is no
+      argument that turns it off.
     """
-    academic_year, template, previous_holder = _check_assignment_order(
+    appointments = list(appointments)
+    academic_year, template, previous_lead = _check_assignment_order(
         committee=committee,
-        faculty=faculty,
-        role=role,
+        appointments=appointments,
         order_date=order_date,
         issued_by=issued_by,
         academic_year=academic_year,
     )
     if expected_superseded_id is not NOT_CHECKED:
-        actual_superseded_id = previous_holder.pk if previous_holder else None
+        actual_superseded_id = previous_lead.pk if previous_lead else None
         if actual_superseded_id != expected_superseded_id:
             raise PreviewOutdated()
     effective_date = effective_date or order_date
 
     order_no = next_order_no(academic_year, committee)
+    members = _member_rows(appointments)
+    first = members[0]
     context = {
         "order_no": order_no,
         "order_date": order_date.strftime(DOCUMENT_DATE_FORMAT),
-        "faculty_salutation": faculty.salutation,
-        "faculty_name": faculty.full_name,
-        "faculty_designation": faculty.get_designation_display(),
-        "faculty_department": faculty.department.name if faculty.department else "",
-        "faculty_employee_code": faculty.employee_code,
+        # Singular placeholders describe the first person named, so a template
+        # written for one appointee still renders correctly.
+        "faculty_salutation": first["salutation"],
+        "faculty_name": first["name"],
+        "faculty_designation": first["designation"],
+        "faculty_department": first["department"],
+        "faculty_employee_code": getattr(appointments[0][0], "employee_code", ""),
+        "assignment_role": first["role"],
+        # The table, for templates that print every person.
+        "member_list": members,
+        "member_count": len(members),
         "committee_name": committee.name,
         "committee_description": committee.description,
-        "assignment_role": str(AssignmentRole(role).label),
         "academic_year": academic_year.label,
         "principal_name": issued_by.full_name,
         "effective_date": effective_date.strftime(DOCUMENT_DATE_FORMAT),
-        "previous_holder_name": previous_holder.faculty.full_name if previous_holder else "",
+        "previous_holder_name": previous_lead.holder_name if previous_lead else "",
+        "references": references,
         "remarks": remarks or "—",
     }
     signature = issued_by.signature_image
@@ -225,31 +291,36 @@ def issue_assignment_order(
         template_used=template,
         render_context=render_context,
         remarks=remarks,
+        references=references,
     )
     order.generated_file.save(f"{order_no}.docx", ContentFile(buffer.getvalue()), save=False)
     try:
         order.save()
-        assignment = assign_committee(
-            faculty=faculty,
-            committee=committee,
-            role=role,
-            order=order,
-            effective_date=effective_date,
-        )
+        created = [
+            assign_committee(
+                holder=holder,
+                committee=committee,
+                role=role,
+                order=order,
+                effective_date=effective_date,
+            )
+            for holder, role in appointments
+        ]
     except Exception:
         # The transaction discards the rows; the stored file must not outlive them.
         order.generated_file.storage.delete(order.generated_file.name)
         raise
 
+    named = ", ".join(row["name"] for row in members)
     audit.log(
         action=AuditAction.ORDER_ISSUED,
         actor=issued_by,
         obj=order,
-        summary=f"{order_no} issued: {faculty.full_name}, {context['assignment_role']} of {committee.name}",
+        summary=f"{order_no} issued: {named} — {committee.name}"[:255],
         detail={
             "order_type": OrderType.ASSIGNMENT,
-            "assignment_id": assignment.pk,
-            "superseded_assignment_id": previous_holder.pk if previous_holder else None,
+            "assignment_ids": [a.pk for a in created],
+            "superseded_assignment_id": previous_lead.pk if previous_lead else None,
             "template_version": template.version,
             "demo_mode": settings.DEMO_MODE,
         },
@@ -352,21 +423,19 @@ def issue_relinquishment_order(
             % {"date": order_date.strftime(DOCUMENT_DATE_FORMAT), "year": academic_year.label}
         )
 
-    faculty = assignment.faculty
+    holder = assignment.holder
     committee = assignment.committee
     role_label = str(AssignmentRole(assignment.role).label)
     order_no = next_order_no(academic_year, committee)
-    department = ", " + faculty.department.name if faculty.department else ""
     subject = "Relinquishment of {}, {} for the academic year {}.".format(
         role_label, committee.name, academic_year.label
     )
     body = [
-        "{} {}, {}{}, is hereby relieved of the duties of {} of the {} of this institute "
+        "{} {}, {}, is hereby relieved of the duties of {} of the {} of this institute "
         "with effect from {}.".format(
-            faculty.salutation,
-            faculty.full_name,
-            faculty.get_designation_display(),
-            department,
+            holder.salutation,
+            holder.full_name,
+            assignment.holder_detail,
             role_label,
             committee.name,
             order_date.strftime(DOCUMENT_DATE_FORMAT),
@@ -380,10 +449,10 @@ def issue_relinquishment_order(
     render_context = {
         "order_no": order_no,
         "order_date": order_date.strftime(DOCUMENT_DATE_FORMAT),
-        "faculty_salutation": faculty.salutation,
-        "faculty_name": faculty.full_name,
-        "faculty_designation": faculty.get_designation_display(),
-        "faculty_department": faculty.department.name if faculty.department else "",
+        "faculty_salutation": holder.salutation,
+        "faculty_name": holder.full_name,
+        "faculty_designation": assignment.holder_detail,
+        "faculty_department": "",
         "committee_name": committee.name,
         "assignment_role": role_label,
         "academic_year": academic_year.label,
@@ -419,7 +488,7 @@ def issue_relinquishment_order(
         actor=issued_by,
         obj=order,
         summary="{} issued: {} relinquishes {} of {}".format(
-            order_no, faculty.full_name, role_label, committee.name
+            order_no, holder.full_name, role_label, committee.name
         ),
         detail={
             "order_type": OrderType.RELINQUISHMENT,
@@ -463,9 +532,13 @@ def cancel_order(*, order, reason, issued_by, order_date=None, request=None):
     subject = "Corrigendum to Order No. {} dated {}.".format(
         order.order_no, order.order_date.strftime(DOCUMENT_DATE_FORMAT)
     )
-    created = list(order.created_assignments.select_related("faculty", "committee"))
+    created = list(
+        order.created_assignments.select_related("faculty", "external_member", "committee")
+    )
     restored = list(
-        order.ended_assignments.select_related("faculty", "committee").filter(
+        order.ended_assignments.select_related(
+            "faculty", "external_member", "committee"
+        ).filter(
             status=AssignmentStatus.SUPERSEDED
         )
     )
@@ -480,8 +553,8 @@ def cancel_order(*, order, reason, issued_by, order_date=None, request=None):
     for assignment in created:
         body.append(
             "The appointment of {} {} as {} of the {} stands withdrawn.".format(
-                assignment.faculty.salutation,
-                assignment.faculty.full_name,
+                assignment.holder.salutation,
+                assignment.holder_name,
                 assignment.get_role_display(),
                 assignment.committee.name,
             )
@@ -489,8 +562,8 @@ def cancel_order(*, order, reason, issued_by, order_date=None, request=None):
     for assignment in restored:
         body.append(
             "{} {} shall continue as {} of the {} as before.".format(
-                assignment.faculty.salutation,
-                assignment.faculty.full_name,
+                assignment.holder.salutation,
+                assignment.holder_name,
                 assignment.get_role_display(),
                 assignment.committee.name,
             )
@@ -507,8 +580,8 @@ def cancel_order(*, order, reason, issued_by, order_date=None, request=None):
         "principal_name": issued_by.full_name,
         "principal_signature": issued_by.signature_image.name if issued_by.signature_image else "",
         "cancellation_reason": reason,
-        "withdrawn": [a.faculty.full_name for a in created],
-        "restored": [a.faculty.full_name for a in restored],
+        "withdrawn": [a.holder_name for a in created],
+        "restored": [a.holder_name for a in restored],
     }
     buffer = _build_plain_order(
         heading="CORRIGENDUM",

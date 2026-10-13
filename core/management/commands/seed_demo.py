@@ -16,7 +16,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from accounts.models import Department, Designation, GovtClass, Role, User
+from accounts.models import Department, Designation, ExternalMember, GovtClass, Role, User
 from accounts.validators import validate_signature_image
 from assignments.models import Assignment, AssignmentRole, AssignmentStatus
 from assignments.services import expire_assignments_for_year
@@ -60,6 +60,7 @@ COMMITTEES = [
     ("CUL", "Cultural Committee", True),
     ("ICT", "Website & IT Committee", True),
     ("ALM", "Alumni Association Cell", False),
+    ("ICC", "Internal Complaint Committee", True),
 ]
 
 LEC, HOD = Designation.LECTURER, Designation.HEAD_OF_DEPARTMENT
@@ -85,45 +86,64 @@ FACULTY = [
     ("meera.pandya", "Smt.", "Meera Pandya", LEC, C2, "SH", date(2023, 6, 19)),
 ]
 
-CON, MEM = AssignmentRole.CONVENER, AssignmentRole.MEMBER
+LEAD, MEM = AssignmentRole.PRESIDING_OFFICER, AssignmentRole.MEMBER
+NODAL, EXT = AssignmentRole.NODAL_OFFICER, AssignmentRole.EXTERNAL_MEMBER
 
 # (committee, faculty, role, order date), issued in this order.
 HISTORY_2025_26 = [
-    ("TPU", "kiran.vasava", CON, date(2025, 6, 16)),
-    ("EXAM", "nilesh.bhatt", CON, date(2025, 6, 16)),
-    ("ARC", "dipti.solanki", CON, date(2025, 6, 18)),
-    ("SPT", "jayesh.rathod", CON, date(2025, 6, 20)),
+    ("TPU", "kiran.vasava", LEAD, date(2025, 6, 16)),
+    ("EXAM", "nilesh.bhatt", LEAD, date(2025, 6, 16)),
+    ("ARC", "dipti.solanki", LEAD, date(2025, 6, 18)),
+    ("SPT", "jayesh.rathod", LEAD, date(2025, 6, 20)),
     ("LIB", "mihir.patel", MEM, date(2025, 7, 1)),
     ("CUL", "hetal.mistry", MEM, date(2025, 7, 3)),
     # In-year hand-over: supersedes Nilesh Bhatt.
-    ("EXAM", "sanjay.trivedi", CON, date(2025, 11, 10)),
+    ("EXAM", "sanjay.trivedi", LEAD, date(2025, 11, 10)),
 ]
 # Standing appointment carried into 2026-27, where Mihir Patel supersedes it.
-CARRIED_FORWARD = {("TPU", "kiran.vasava", CON)}
+CARRIED_FORWARD = {("TPU", "kiran.vasava", LEAD)}
 
 CURRENT_2026_27 = [
-    ("TPU", "mihir.patel", CON, date(2026, 6, 15)),
+    ("TPU", "mihir.patel", LEAD, date(2026, 6, 15)),
     ("TPU", "pooja.joshi", MEM, date(2026, 6, 15)),
-    ("EXAM", "sanjay.trivedi", CON, date(2026, 6, 16)),
+    ("EXAM", "sanjay.trivedi", LEAD, date(2026, 6, 16)),
     ("EXAM", "mihir.patel", MEM, date(2026, 6, 16)),
-    ("IQAC", "dipti.solanki", CON, date(2026, 6, 17)),
+    ("IQAC", "dipti.solanki", LEAD, date(2026, 6, 17)),
     ("IQAC", "mihir.patel", MEM, date(2026, 6, 17)),
-    ("ARC", "ketan.makwana", CON, date(2026, 6, 18)),
+    ("ARC", "ketan.makwana", LEAD, date(2026, 6, 18)),
     ("ARC", "dipti.solanki", MEM, date(2026, 6, 18)),
-    ("WGC", "rekha.damor", CON, date(2026, 6, 19)),
+    ("WGC", "rekha.damor", LEAD, date(2026, 6, 19)),
     ("WGC", "hetal.mistry", MEM, date(2026, 6, 19)),
-    ("LIB", "alka.desai", CON, date(2026, 6, 22)),
+    ("LIB", "alka.desai", LEAD, date(2026, 6, 22)),
     ("LIB", "mihir.patel", MEM, date(2026, 6, 22)),
-    ("PUR", "nilesh.bhatt", CON, date(2026, 6, 23)),
-    ("DISC", "bhavesh.gohil", CON, date(2026, 6, 24)),
+    ("PUR", "nilesh.bhatt", LEAD, date(2026, 6, 23)),
+    ("DISC", "bhavesh.gohil", LEAD, date(2026, 6, 24)),
     ("DISC", "mihir.patel", MEM, date(2026, 6, 24)),
-    ("SPT", "jayesh.rathod", CON, date(2026, 7, 1)),
+    ("SPT", "jayesh.rathod", LEAD, date(2026, 7, 1)),
     ("SPT", "ashok.parmar", MEM, date(2026, 7, 1)),
-    ("CUL", "hetal.mistry", CON, date(2026, 7, 2)),
+    ("CUL", "hetal.mistry", LEAD, date(2026, 7, 2)),
     ("CUL", "pooja.joshi", MEM, date(2026, 7, 2)),
-    ("ICT", "mihir.patel", CON, date(2026, 7, 6)),
+    ("ICT", "mihir.patel", LEAD, date(2026, 7, 6)),
     ("ICT", "kiran.vasava", MEM, date(2026, 7, 6)),
-    ("ALM", "vipul.shah", CON, date(2026, 7, 8)),
+    ("ALM", "vipul.shah", LEAD, date(2026, 7, 8)),
+]
+
+EXTERNAL_MEMBERS = [
+    ("Ms.", "Test External One", "Founder, Example Women's Welfare Organisation"),
+]
+
+# Orders that appoint several people at once, as the college's real orders do:
+# (committee, [(email local part or external index, role), ...], order date)
+MULTI_MEMBER_2026_27 = [
+    (
+        "ICC",
+        [
+            ("mihir.patel", LEAD),
+            ("kiran.vasava", MEM),
+            (("external", 0), EXT),
+        ],
+        date(2026, 7, 10),
+    ),
 ]
 
 REMARKS = {
@@ -137,20 +157,21 @@ MINIMAL_COMMITTEES = [
     ("TPU", "Training & Placement Unit", True),
     ("EXAM", "Examination Committee", True),
     ("LIB", "Library Committee", True),
+    ("ICC", "Internal Complaint Committee", True),
 ]
 MINIMAL_FACULTY = [
     ("mihir.patel", "Shri", "Mihir Patel", LEC, C2, "CO", date(2012, 8, 16)),
     ("kiran.vasava", "Shri", "Kiran Vasava", LEC, C2, "CO", date(2016, 1, 11)),
 ]
 MINIMAL_HISTORY_2025_26 = [
-    ("TPU", "kiran.vasava", CON, date(2025, 6, 16)),
+    ("TPU", "kiran.vasava", LEAD, date(2025, 6, 16)),
     ("LIB", "mihir.patel", MEM, date(2025, 7, 1)),
 ]
 # Kiran's TPU convenership stands into 2026-27, where Mihir supersedes it.
-MINIMAL_CARRIED_FORWARD = {("TPU", "kiran.vasava", CON)}
+MINIMAL_CARRIED_FORWARD = {("TPU", "kiran.vasava", LEAD)}
 MINIMAL_CURRENT_2026_27 = [
-    ("TPU", "mihir.patel", CON, date(2026, 6, 15)),
-    ("EXAM", "kiran.vasava", CON, date(2026, 6, 16)),
+    ("TPU", "mihir.patel", LEAD, date(2026, 6, 15)),
+    ("EXAM", "kiran.vasava", LEAD, date(2026, 6, 16)),
     ("LIB", "mihir.patel", MEM, date(2026, 6, 22)),
 ]
 
@@ -194,6 +215,7 @@ class Command(BaseCommand):
                 for index, row in enumerate(self.faculty_rows, start=2)
             }
             committees = self._committees()
+            external = self._external_members()
             self._templates(committees, principal)
             self._signature(principal)
 
@@ -206,7 +228,7 @@ class Command(BaseCommand):
             )
         else:
             with transaction.atomic():
-                self._assignments(years, committees, principal, faculty)
+                self._assignments(years, committees, principal, faculty, external)
 
         self._report()
 
@@ -263,13 +285,26 @@ class Command(BaseCommand):
             for code, name, multiple in self.committee_rows
         }
 
+    def _external_members(self):
+        return [
+            ExternalMember.objects.get_or_create(
+                full_name=full_name,
+                organisation=organisation,
+                defaults={"salutation": salutation},
+            )[0]
+            for salutation, full_name, organisation in EXTERNAL_MEMBERS
+        ]
+
     def _templates(self, committees, principal):
+        templates = {"EXAM": "EXAM", "TPU": "TPU"}
         for code, committee in committees.items():
             if committee.templates.exists():
                 continue
-            # EXAM has its own circular format; TPU's office order is the fallback.
-            source = DEMO_DIR / (
-                "order_template_EXAM.docx" if code == "EXAM" else "order_template_TPU.docx"
+            # EXAM is a circular and TPU a single-person office order; every
+            # other committee uses the member-table format, which matches the
+            # college's real orders (docs/11_REAL_ORDERS.md).
+            source = DEMO_DIR / "order_template_{}.docx".format(
+                templates.get(code, "COMMITTEE")
             )
             with source.open("rb") as handle:
                 upload_committee_template(
@@ -287,17 +322,34 @@ class Command(BaseCommand):
             validate_signature_image(image)
             principal.signature_image.save(source.name, image, save=True)
 
-    def _assignments(self, years, committees, principal, faculty):
+    def _assignments(self, years, committees, principal, faculty, external):
+        def person(reference):
+            if isinstance(reference, tuple):
+                return external[reference[1]]
+            return faculty[reference]
+
         def issue(row, academic_year):
             code, local, role, order_date = row
             return issue_assignment_order(
                 committee=committees[code],
-                faculty=faculty[local],
-                role=role,
+                appointments=[(faculty[local], role)],
                 order_date=order_date,
                 issued_by=principal,
                 academic_year=academic_year,
                 remarks=REMARKS.get(code, ""),
+            )
+
+        def issue_many(row, academic_year):
+            code, people, order_date = row
+            return issue_assignment_order(
+                committee=committees[code],
+                appointments=[(person(ref), role) for ref, role in people],
+                order_date=order_date,
+                issued_by=principal,
+                academic_year=academic_year,
+                references=(
+                    "Ministry of Education (AICTE) Notification, New Delhi, 10 June 2016"
+                ),
             )
 
         carried = []
@@ -309,6 +361,8 @@ class Command(BaseCommand):
 
         for row in self.current:
             issue(row, years["2026-27"])
+        for row in MULTI_MEMBER_2026_27:
+            issue_many(row, years["2026-27"])
 
     def _report(self):
         active = Assignment.objects.active()
@@ -319,6 +373,7 @@ class Command(BaseCommand):
             ("  Principal", User.objects.filter(role=Role.PRINCIPAL).count()),
             ("  Faculty", User.objects.filter(role=Role.FACULTY).count()),
             ("Committees", Committee.objects.count()),
+            ("External members", ExternalMember.objects.count()),
             ("Committee templates", CommitteeTemplate.objects.count()),
             ("Orders", Order.objects.count()),
             ("Order sequences", OrderSequence.objects.count()),

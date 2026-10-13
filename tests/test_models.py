@@ -16,7 +16,7 @@ from core.models import AcademicYear
 pytestmark = pytest.mark.django_db
 
 
-def make_assignment(faculty, committee, order, role=AssignmentRole.CONVENER, **kwargs):
+def make_assignment(faculty, committee, order, role=AssignmentRole.PRESIDING_OFFICER, **kwargs):
     """Create a row directly, to test what the database itself refuses."""
     return Assignment.objects.create(
         faculty=faculty,
@@ -38,7 +38,7 @@ class TestAssignmentConstraints:
         with pytest.raises(IntegrityError), transaction.atomic():
             make_assignment(faculty, committee, order)
 
-    def test_two_active_conveners_in_one_committee_are_refused(
+    def test_two_active_leads_in_one_committee_are_refused(
         self, faculty, other_faculty, committee, issue_order
     ):
         order = issue_order(faculty=faculty, committee=committee)
@@ -57,7 +57,7 @@ class TestAssignmentConstraints:
     ):
         issue_order(faculty=faculty, committee=committee)
         issue_order(faculty=other_faculty, committee=committee, order_date=date(2026, 7, 5))
-        rows = Assignment.objects.filter(committee=committee, role=AssignmentRole.CONVENER)
+        rows = Assignment.objects.filter(committee=committee, role=AssignmentRole.PRESIDING_OFFICER)
         assert rows.count() == 2
         assert rows.filter(status=AssignmentStatus.ACTIVE).count() == 1
 
@@ -296,7 +296,7 @@ class TestManagers:
         issue_order(faculty=faculty, committee=exam_committee, order_date=date(2026, 7, 2))
         issue_order(faculty=other_faculty, committee=committee, order_date=date(2026, 7, 3))
         counts = {u.full_name: u.active_count for u in User.objects.faculty_with_counts()}
-        assert counts["Test Faculty One"] == 1  # superseded on TPU, still convener of EXAM
+        assert counts["Test Faculty One"] == 1  # superseded on TPU, still lead of EXAM
         assert counts["Test Faculty Two"] == 1
 
     def test_directory_shows_active_rows_without_extra_queries(

@@ -144,15 +144,45 @@ class TestProfile:
         assert {field: getattr(faculty, field) for field in before} == before
 
 
+def assign_payload(committee, appointments, *, order_date=date(2026, 7, 1), step="preview", **extra):
+    """POST data for the assign form, including the formset's management fields."""
+    data = {
+        "committee": committee.pk if committee else "",
+        "order_date": order_date.isoformat() if order_date else "",
+        "references": "",
+        "remarks": "",
+        "step": step,
+        "form-TOTAL_FORMS": str(max(len(appointments), 1)),
+        "form-INITIAL_FORMS": "0",
+        "form-MIN_NUM_FORMS": "0",
+        "form-MAX_NUM_FORMS": "20",
+    }
+    for index, (holder, role) in enumerate(appointments):
+        prefix = "x" if hasattr(holder, "organisation") else "u"
+        data[f"form-{index}-person"] = f"{prefix}:{holder.pk}" if holder else ""
+        data[f"form-{index}-role"] = role
+    data.update(extra)
+    return data
+
+
 class TestAssignFlow:
-    def test_the_faculty_dropdown_offers_an_explicit_empty_choice(
+    def test_the_person_dropdown_offers_an_explicit_empty_choice(
         self, principal_client, faculty, committee
     ):
         """Nobody must be pre-selected: the browser would otherwise pick the first person."""
         html = principal_client.get(reverse("orders:assign")).content.decode()
-        block = select_block(html, "faculty")
+        block = select_block(html, "form-0-person")
         assert 'value="" selected' in block
-        assert "Choose a faculty member" in block
+        assert "Choose a person" in block
+
+    def test_staff_and_external_members_are_offered_separately(
+        self, principal_client, faculty, external_member, committee
+    ):
+        block = select_block(
+            principal_client.get(reverse("orders:assign")).content.decode(), "form-0-person"
+        )
+        assert "Staff" in block and "From outside the college" in block
+        assert external_member.organisation in block
 
     def test_each_name_shows_the_committee_count(
         self, principal_client, faculty, committee, issue_order
@@ -161,71 +191,140 @@ class TestAssignFlow:
         html = principal_client.get(reverse("orders:assign")).content.decode()
         assert f"{faculty.full_name} · CO · 1 active committee" in html
 
-    def test_submitting_without_a_faculty_member_is_refused(
-        self, principal_client, committee, year
+    def test_an_order_with_nobody_named_is_refused(self, principal_client, committee, year):
+        response = principal_client.post(
+            reverse("orders:assign"), assign_payload(committee, [])
+        )
+        assert "Name at least one person" in response.content.decode()
+        assert Order.objects.count() == 0
+
+    def test_a_person_without_a_role_is_refused(
+        self, principal_client, faculty, committee, year
     ):
         response = principal_client.post(
-            reverse("orders:assign"),
-            {
-                "committee": committee.pk,
-                "faculty": "",
-                "role": AssignmentRole.CONVENER,
-                "order_date": date(2026, 7, 1).isoformat(),
-                "step": "preview",
-            },
+            reverse("orders:assign"), assign_payload(committee, [(faculty, "")])
         )
-        assert response.status_code == 200
-        assert "This field is required." in response.content.decode()
+        assert "Choose a role for this person." in response.content.decode()
         assert Order.objects.count() == 0
 
     def test_a_choice_survives_a_validation_error(
-        self, principal_client, faculty, committee
+        self, principal_client, faculty, committee, year
     ):
         response = principal_client.post(
-            reverse("orders:assign"),
-            {
-                "committee": committee.pk,
-                "faculty": faculty.pk,
-                "order_date": date(2026, 7, 1).isoformat(),
-                "step": "preview",
-            },
+            reverse("orders:assign"), assign_payload(committee, [(faculty, "")])
         )
-        block = select_block(response.content.decode(), "faculty")
-        assert f'value="{faculty.pk}" selected' in block
+        block = select_block(response.content.decode(), "form-0-person")
+        assert f'value="u:{faculty.pk}" selected' in block
 
-    def test_the_preview_states_what_will_happen_and_writes_nothing(
-        self, principal_client, faculty, other_faculty, committee, issue_order
+    def test_the_preview_lists_everyone_and_writes_nothing(
+        self, principal_client, faculty, other_faculty, committee, year
     ):
-        issue_order(faculty=faculty, committee=committee)
         before = (Order.objects.count(), Assignment.objects.count())
         response = principal_client.post(
             reverse("orders:assign"),
-            {
-                "committee": committee.pk,
-                "faculty": other_faculty.pk,
-                "role": AssignmentRole.CONVENER,
-                "order_date": date(2026, 8, 1).isoformat(),
-                "step": "preview",
-            },
+            assign_payload(
+                committee,
+                [
+                    (faculty, AssignmentRole.PRESIDING_OFFICER),
+                    (other_faculty, AssignmentRole.MEMBER),
+                ],
+            ),
         )
         html = response.content.decode()
         assert "Issue order" in html
-        assert faculty.full_name in html  # the holder who would be superseded
+        assert faculty.full_name in html and other_faculty.full_name in html
         assert (Order.objects.count(), Assignment.objects.count()) == before
+
+    def test_one_order_appoints_several_people(
+        self, principal_client, faculty, other_faculty, third_faculty, external_member, committee, year
+    ):
+        """The college's real orders name between two and eight people."""
+        response = principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(
+                committee,
+                [
+                    (faculty, AssignmentRole.PRESIDING_OFFICER),
+                    (other_faculty, AssignmentRole.MEMBER),
+                    (third_faculty, AssignmentRole.MEMBER),
+                    (external_member, AssignmentRole.EXTERNAL_MEMBER),
+                ],
+                step="issue",
+                expected_superseded="none",
+            ),
+        )
+        order = Order.objects.get()
+        assert response.status_code == 302
+        assert order.created_assignments.count() == 4
+        assert order.created_assignments.filter(external_member=external_member).exists()
+        assert order.render_context["member_count"] == 4
+        assert [row["name"] for row in order.render_context["member_list"]] == [
+            faculty.full_name,
+            other_faculty.full_name,
+            third_faculty.full_name,
+            external_member.full_name,
+        ]
+
+    def test_two_people_in_charge_on_one_order_is_refused(
+        self, principal_client, faculty, other_faculty, committee, year
+    ):
+        response = principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(
+                committee,
+                [
+                    (faculty, AssignmentRole.PRESIDING_OFFICER),
+                    (other_faculty, AssignmentRole.NODAL_OFFICER),
+                ],
+            ),
+        )
+        assert "only one Presiding Officer or Nodal Officer" in response.content.decode()
+        assert Order.objects.count() == 0
+
+    def test_the_same_person_twice_on_one_order_is_refused(
+        self, principal_client, faculty, committee, year
+    ):
+        response = principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(
+                committee,
+                [(faculty, AssignmentRole.MEMBER), (faculty, AssignmentRole.MEMBER)],
+            ),
+        )
+        assert "named twice" in response.content.decode()
+        assert Order.objects.count() == 0
+
+    def test_an_external_member_cannot_take_a_staff_role(
+        self, principal_client, external_member, committee, year
+    ):
+        response = principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(committee, [(external_member, AssignmentRole.PRESIDING_OFFICER)]),
+        )
+        assert "only be appointed as External Member" in response.content.decode()
+        assert Order.objects.count() == 0
+
+    def test_a_staff_member_cannot_take_the_external_role(
+        self, principal_client, faculty, committee, year
+    ):
+        response = principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(committee, [(faculty, AssignmentRole.EXTERNAL_MEMBER)]),
+        )
+        assert "for people outside the college" in response.content.decode()
+        assert Order.objects.count() == 0
 
     def test_issuing_creates_the_order_and_the_assignment(
         self, principal_client, faculty, committee, year
     ):
         response = principal_client.post(
             reverse("orders:assign"),
-            {
-                "committee": committee.pk,
-                "faculty": faculty.pk,
-                "role": AssignmentRole.CONVENER,
-                "order_date": date(2026, 7, 1).isoformat(),
-                "step": "issue",
-                "expected_superseded": "none",
-            },
+            assign_payload(
+                committee,
+                [(faculty, AssignmentRole.PRESIDING_OFFICER)],
+                step="issue",
+                expected_superseded="none",
+            ),
         )
         order = Order.objects.get()
         assert response.status_code == 302
@@ -237,13 +336,9 @@ class TestAssignFlow:
     ):
         response = principal_client.post(
             reverse("orders:assign"),
-            {
-                "committee": committee.pk,
-                "faculty": faculty.pk,
-                "role": AssignmentRole.CONVENER,
-                "order_date": date(2026, 7, 1).isoformat(),
-                "step": "issue",
-            },
+            assign_payload(
+                committee, [(faculty, AssignmentRole.PRESIDING_OFFICER)], step="issue"
+            ),
         )
         assert "previewed" in response.content.decode()
         assert Order.objects.count() == 0
@@ -253,15 +348,31 @@ class TestAssignFlow:
     ):
         response = principal_client.post(
             reverse("orders:assign"),
-            {
-                "committee": committee.pk,
-                "faculty": faculty.pk,
-                "role": AssignmentRole.CONVENER,
-                "order_date": (timezone.localdate() + timedelta(days=1)).isoformat(),
-                "step": "preview",
-            },
+            assign_payload(
+                committee,
+                [(faculty, AssignmentRole.PRESIDING_OFFICER)],
+                order_date=timezone.localdate() + timedelta(days=1),
+            ),
         )
         assert "cannot be in the future" in response.content.decode()
+
+    def test_references_are_stored_and_printed_on_the_order(
+        self, principal_client, faculty, committee, year
+    ):
+        reference = "GTU circular no. 2026-27/456 dated 04-02-2026"
+        principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(
+                committee,
+                [(faculty, AssignmentRole.PRESIDING_OFFICER)],
+                step="issue",
+                expected_superseded="none",
+                references=reference,
+            ),
+        )
+        order = Order.objects.get()
+        assert order.references == reference
+        assert order.render_context["references"] == reference
 
 
 class TestFacultyManagement:

@@ -78,6 +78,7 @@ class Order(ProtectedRecord):
         "template_used",
         "render_context",
         "remarks",
+        "references",
     )
 
     order_no = models.CharField(_("order number"), max_length=60, unique=True)
@@ -112,6 +113,9 @@ class Order(ProtectedRecord):
     )
     render_context = models.JSONField(_("render context"))
     remarks = models.TextField(_("remarks"), blank=True)
+    # The circular, Act or notification the order acts under, printed above the
+    # body. Real orders cite these (docs/11_REAL_ORDERS.md §6).
+    references = models.TextField(_("references"), blank=True)
     is_cancelled = models.BooleanField(_("cancelled"), default=False)
     cancelled_by_order = models.ForeignKey(
         "self",

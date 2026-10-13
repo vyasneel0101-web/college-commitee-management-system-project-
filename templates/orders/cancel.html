@@ -19,14 +19,14 @@
     <p>{% blocktranslate with number=order.order_no date=order.order_date|date:"j M Y" %}Order {{ number }} of {{ date }} will be marked cancelled and a corrigendum will be issued with a new number.{% endblocktranslate %}</p>
     {% for assignment in created %}
     <p class="border-l-4 border-[#7A5A1F] pl-3">
-      {% blocktranslate trimmed with name=assignment.faculty.full_name role=assignment.get_role_display committee=assignment.committee.name %}
+      {% blocktranslate trimmed with name=assignment.holder_name role=assignment.get_role_display committee=assignment.committee.name %}
         <strong>{{ name }}</strong> stops being {{ role }} of {{ committee }}.
       {% endblocktranslate %}
     </p>
     {% endfor %}
     {% for assignment in restored %}
     <p class="border-l-4 border-[#7A5A1F] pl-3">
-      {% blocktranslate trimmed with name=assignment.faculty.full_name role=assignment.get_role_display committee=assignment.committee.name %}
+      {% blocktranslate trimmed with name=assignment.holder_name role=assignment.get_role_display committee=assignment.committee.name %}
         <strong>{{ name }}</strong> becomes {{ role }} of {{ committee }} again, as before this order.
       {% endblocktranslate %}
     </p>

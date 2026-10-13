@@ -30,7 +30,7 @@ from orders.models import Order
 pytestmark = pytest.mark.django_db
 
 
-def test_1_convener_for_an_empty_committee_creates_one_active_row(
+def test_1_lead_for_an_empty_committee_creates_one_active_row(
     faculty, committee, issue_order
 ):
     order = issue_order(faculty=faculty, committee=committee)
@@ -41,7 +41,7 @@ def test_1_convener_for_an_empty_committee_creates_one_active_row(
     assert assignment.end_date is None
 
 
-def test_2_new_convener_supersedes_the_previous_holder(
+def test_2_new_lead_supersedes_the_previous_holder(
     faculty, other_faculty, committee, issue_order
 ):
     issue_order(faculty=faculty, committee=committee)
@@ -58,7 +58,7 @@ def test_2_new_convener_supersedes_the_previous_holder(
     assert Assignment.objects.count() == 2
     assert (
         Assignment.objects.active()
-        .filter(committee=committee, role=AssignmentRole.CONVENER)
+        .filter(committee=committee, role=AssignmentRole.PRESIDING_OFFICER)
         .count()
         == 1
     )
@@ -113,7 +113,7 @@ def test_5_relinquish_ends_the_assignment_with_no_successor(
     assert assignment.ending_order == ending
     assert assignment.superseded_by is None
     assert not Assignment.objects.active().filter(
-        committee=committee, role=AssignmentRole.CONVENER
+        committee=committee, role=AssignmentRole.PRESIDING_OFFICER
     )
 
 
@@ -133,13 +133,13 @@ def test_7_inactive_faculty_is_refused(faculty, committee, issue_order):
     assert Assignment.objects.count() == 0
 
 
-def test_7b_member_on_a_convener_only_committee_is_refused(
-    faculty, convener_only_committee, issue_order
+def test_7b_member_on_a_lead_only_committee_is_refused(
+    faculty, lead_only_committee, issue_order
 ):
     with pytest.raises(RoleNotAllowed):
         issue_order(
             faculty=faculty,
-            committee=convener_only_committee,
+            committee=lead_only_committee,
             role=AssignmentRole.MEMBER,
         )
     assert Assignment.objects.count() == 0
@@ -273,13 +273,13 @@ def test_12_history_only_ever_grows(
     faculty, other_faculty, third_faculty, committee, exam_committee, issue_order
 ):
     operations = [
-        (faculty, committee, AssignmentRole.CONVENER, date(2026, 7, 1)),
+        (faculty, committee, AssignmentRole.PRESIDING_OFFICER, date(2026, 7, 1)),
         (other_faculty, committee, AssignmentRole.MEMBER, date(2026, 7, 2)),
         (third_faculty, committee, AssignmentRole.MEMBER, date(2026, 7, 3)),
-        (other_faculty, committee, AssignmentRole.CONVENER, date(2026, 7, 4)),
-        (faculty, exam_committee, AssignmentRole.CONVENER, date(2026, 7, 5)),
+        (other_faculty, committee, AssignmentRole.PRESIDING_OFFICER, date(2026, 7, 4)),
+        (faculty, exam_committee, AssignmentRole.PRESIDING_OFFICER, date(2026, 7, 5)),
         (third_faculty, exam_committee, AssignmentRole.MEMBER, date(2026, 7, 6)),
-        (third_faculty, committee, AssignmentRole.CONVENER, date(2026, 7, 7)),
+        (third_faculty, committee, AssignmentRole.PRESIDING_OFFICER, date(2026, 7, 7)),
     ]
     for person, group, role, when in operations:
         issue_order(faculty=person, committee=group, role=role, order_date=when)

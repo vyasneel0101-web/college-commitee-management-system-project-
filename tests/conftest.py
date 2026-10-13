@@ -116,7 +116,15 @@ def exam_committee(db, principal):
 
 
 @pytest.fixture
-def convener_only_committee(db, principal):
+def table_committee(db, principal):
+    """A committee whose template prints a table of everyone appointed."""
+    return _committee(
+        "ICC", "Internal Complaint Committee", principal, template="COMMITTEE"
+    )
+
+
+@pytest.fixture
+def lead_only_committee(db, principal):
     return _committee(
         "ALM", "Alumni Association Cell", principal, allows_multiple_members=False
     )
@@ -126,17 +134,35 @@ def convener_only_committee(db, principal):
 def issue_order(db, principal, year):
     """Issue an assignment order through the real service."""
 
-    def _issue(*, faculty, committee, role=AssignmentRole.CONVENER, order_date=ORDER_DATE, **kwargs):
+    def _issue(
+        *,
+        committee,
+        faculty=None,
+        role=AssignmentRole.PRESIDING_OFFICER,
+        appointments=None,
+        order_date=ORDER_DATE,
+        **kwargs,
+    ):
         return issue_assignment_order(
             committee=committee,
-            faculty=faculty,
-            role=role,
+            appointments=appointments or [(faculty, role)],
             order_date=order_date,
             issued_by=principal,
             **kwargs,
         )
 
     return _issue
+
+
+@pytest.fixture
+def external_member(db):
+    from accounts.models import ExternalMember
+
+    return ExternalMember.objects.create(
+        salutation="Ms.",
+        full_name="Test External One",
+        organisation="Example Welfare Organisation",
+    )
 
 
 @pytest.fixture

@@ -116,7 +116,7 @@ class TestRendering:
         assert committee.name in text
         assert order.order_no in text
         assert order.order_date.strftime("%d-%m-%Y") in text
-        assert "Convener" in text
+        assert "Presiding Officer" in text
 
     def test_no_placeholder_survives_rendering(self, faculty, committee, issue_order):
         assert "{{" not in document_text(issue_order(faculty=faculty, committee=committee))
@@ -128,6 +128,49 @@ class TestRendering:
             faculty=faculty, committee=exam_committee, remarks="Duties to follow."
         )
         assert "Duties to follow." in document_text(order)
+
+    def test_a_member_table_prints_every_person_appointed(
+        self, faculty, other_faculty, third_faculty, external_member, table_committee, issue_order
+    ):
+        """The college's real orders name several people in one table."""
+        order = issue_order(
+            committee=table_committee,
+            appointments=[
+                (faculty, AssignmentRole.PRESIDING_OFFICER),
+                (other_faculty, AssignmentRole.MEMBER),
+                (third_faculty, AssignmentRole.MEMBER),
+                (external_member, AssignmentRole.EXTERNAL_MEMBER),
+            ],
+        )
+        with order.generated_file.open("rb") as handle:
+            document = Document(handle)
+        rows = document.tables[0].rows
+        printed = [[cell.text.strip() for cell in row.cells] for row in rows[1:]]
+
+        assert len(printed) == 4, "one row per person"
+        assert [row[0] for row in printed] == ["1", "2", "3", "4"]
+        assert printed[0][1].endswith(faculty.full_name)
+        assert printed[0][3] == "Presiding Officer"
+        assert printed[3][1].endswith(external_member.full_name)
+        assert printed[3][2] == external_member.organisation
+        assert printed[3][3] == "External Member"
+        assert "{{" not in document_text(order)
+
+    def test_a_reference_block_is_printed_when_given(
+        self, faculty, table_committee, issue_order
+    ):
+        order = issue_order(
+            committee=table_committee,
+            faculty=faculty,
+            references="GTU circular 2026-27/456 dated 04-02-2026",
+        )
+        assert "GTU circular 2026-27/456" in document_text(order)
+
+    def test_the_reference_line_is_absent_when_not_given(
+        self, faculty, table_committee, issue_order
+    ):
+        order = issue_order(committee=table_committee, faculty=faculty)
+        assert "Reference:" not in document_text(order)
 
     def test_the_render_context_is_stored(self, faculty, committee, issue_order):
         order = issue_order(faculty=faculty, committee=committee)
@@ -159,8 +202,7 @@ class TestRendering:
         with pytest.raises(TemplateMissing):
             issue_assignment_order(
                 committee=bare,
-                faculty=faculty,
-                role=AssignmentRole.CONVENER,
+                appointments=[(faculty, AssignmentRole.PRESIDING_OFFICER)],
                 order_date=date(2026, 7, 1),
                 issued_by=principal,
             )
@@ -196,8 +238,7 @@ class TestIssueRules:
         with pytest.raises(NotPrincipal):
             issue_assignment_order(
                 committee=committee,
-                faculty=faculty,
-                role=AssignmentRole.CONVENER,
+                appointments=[(faculty, AssignmentRole.PRESIDING_OFFICER)],
                 order_date=date(2026, 7, 1),
                 issued_by=other_faculty,
             )
@@ -220,8 +261,7 @@ class TestIssueRules:
     def test_preview_writes_nothing(self, principal, faculty, committee, year):
         preview = preview_assignment_order(
             committee=committee,
-            faculty=faculty,
-            role=AssignmentRole.CONVENER,
+            appointments=[(faculty, AssignmentRole.PRESIDING_OFFICER)],
             order_date=date(2026, 7, 1),
             issued_by=principal,
         )
@@ -236,12 +276,11 @@ class TestIssueRules:
         issue_order(faculty=faculty, committee=committee)
         preview = preview_assignment_order(
             committee=committee,
-            faculty=other_faculty,
-            role=AssignmentRole.CONVENER,
+            appointments=[(other_faculty, AssignmentRole.PRESIDING_OFFICER)],
             order_date=date(2026, 8, 1),
             issued_by=principal,
         )
-        assert preview.previous_holder.faculty == faculty
+        assert preview.previous_holder.holder == faculty
 
     def test_issuing_is_refused_when_the_holder_changed_since_the_preview(
         self, principal, faculty, other_faculty, third_faculty, committee, issue_order
@@ -254,8 +293,7 @@ class TestIssueRules:
         with pytest.raises(PreviewOutdated):
             issue_assignment_order(
                 committee=committee,
-                faculty=third_faculty,
-                role=AssignmentRole.CONVENER,
+                appointments=[(third_faculty, AssignmentRole.PRESIDING_OFFICER)],
                 order_date=date(2026, 8, 2),
                 issued_by=principal,
                 expected_superseded_id=stale,

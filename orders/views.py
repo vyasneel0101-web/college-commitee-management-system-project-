@@ -12,9 +12,14 @@ from audit.models import AuditAction
 from core.exceptions import DomainError, PreviewOutdated
 
 from . import services
-from assignments.models import Assignment, AssignmentStatus
+from assignments.models import Assignment, AssignmentRole, AssignmentStatus
 
-from .forms import AssignCommitteeForm, CancelOrderForm, RelinquishForm
+from .forms import (
+    AppointmentFormSet,
+    AssignCommitteeForm,
+    CancelOrderForm,
+    RelinquishForm,
+)
 from .models import Order
 
 DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -36,23 +41,38 @@ def assign(request):
     """
     Assign a committee in two steps. The form posts to a preview that writes
     nothing; the preview's "Issue order" button posts back with step=issue.
+
+    One order may name several people, as the college's real orders do.
     """
     if request.method == "GET":
-        form = AssignCommitteeForm(initial={"order_date": timezone.localdate()})
-        return render(request, "orders/assign.html", {"form": form})
+        return render(
+            request,
+            "orders/assign.html",
+            {
+                "form": AssignCommitteeForm(initial={"order_date": timezone.localdate()}),
+                "formset": AppointmentFormSet(),
+            },
+        )
 
     form = AssignCommitteeForm(request.POST)
+    formset = AppointmentFormSet(request.POST)
     step = request.POST.get("step")
-    if not form.is_valid() or step == "edit":
-        return render(request, "orders/assign.html", {"form": form})
+    context = {"form": form, "formset": formset}
+    if not (form.is_valid() and formset.is_valid()) or step == "edit":
+        return render(request, "orders/assign.html", context)
 
-    details = {key: form.cleaned_data[key] for key in ("committee", "faculty", "role", "order_date")}
+    details = {
+        "committee": form.cleaned_data["committee"],
+        "appointments": formset.appointments(),
+        "order_date": form.cleaned_data["order_date"],
+    }
     try:
         if step == "issue":
             order = services.issue_assignment_order(
                 **details,
                 issued_by=request.user,
                 remarks=form.cleaned_data["remarks"],
+                references=form.cleaned_data["references"],
                 expected_superseded_id=_expected_superseded_id(request.POST),
                 request=request,
             )
@@ -61,8 +81,13 @@ def assign(request):
         preview = services.preview_assignment_order(**details, issued_by=request.user)
     except DomainError as exc:
         form.add_error(None, exc.message)
-        return render(request, "orders/assign.html", {"form": form})
-    return render(request, "orders/assign_preview.html", {"form": form, "preview": preview})
+        return render(request, "orders/assign.html", context)
+    context["preview"] = preview
+    context["appointments"] = [
+        {"holder": holder, "role": AssignmentRole(role).label}
+        for holder, role in details["appointments"]
+    ]
+    return render(request, "orders/assign_preview.html", context)
 
 
 @principal_required

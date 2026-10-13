@@ -32,8 +32,8 @@
       {% for assignment in held_by %}
       <tr>
         <td data-label="{% translate 'Role' %}">{{ assignment.get_role_display }}</td>
-        <td data-label="{% translate 'Held by' %}">{{ assignment.faculty.salutation }} {{ assignment.faculty.full_name }}</td>
-        <td data-label="{% translate 'Department' %}">{{ assignment.faculty.department.name|default:"—" }}</td>
+        <td data-label="{% translate 'Held by' %}">{{ assignment.holder.salutation }} {{ assignment.holder_name }}</td>
+        <td data-label="{% translate 'Department' %}">{{ assignment.holder_detail|default:"—" }}</td>
         <td data-label="{% translate 'Since' %}" class="tabular-nums">{{ assignment.start_date|date:"j M Y" }}</td>
       </tr>
       {% endfor %}

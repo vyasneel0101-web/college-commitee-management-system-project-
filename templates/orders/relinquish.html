@@ -17,7 +17,7 @@
   <h2 id="effect-heading" class="border-b border-[#CBD2DB] px-4 py-3 text-lg font-semibold">{% translate "What this order will do" %}</h2>
   <div class="space-y-3 px-4 py-4">
     <p>
-      {% blocktranslate trimmed with name=assignment.faculty.full_name role=assignment.get_role_display committee=assignment.committee.name since=assignment.start_date|date:"j M Y" %}
+      {% blocktranslate trimmed with name=assignment.holder_name role=assignment.get_role_display committee=assignment.committee.name since=assignment.start_date|date:"j M Y" %}
         <strong>{{ name }}</strong> stops being {{ role }} of {{ committee }}, held since {{ since }}.
       {% endblocktranslate %}
     </p>

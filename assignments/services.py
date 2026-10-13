@@ -1,13 +1,17 @@
 """
-The assignment state machine. docs/02_DATA_MODEL.md, BR-2, BR-3, BR-8.
+The assignment state machine. docs/02_DATA_MODEL.md, docs/11_REAL_ORDERS.md.
 
 Every status transition happens here and nowhere else. No function in this
 module deletes a row.
+
+A role is held either by a member of staff (a `User`) or by somebody from
+outside the college (an `ExternalMember`). Both are referred to as the holder.
 """
 
 from django.db import transaction
 from django.utils.translation import gettext as _
 
+from accounts.models import ExternalMember
 from audit import services as audit
 from audit.models import AuditAction
 from core.exceptions import (
@@ -20,98 +24,126 @@ from core.exceptions import (
     RoleNotAllowed,
 )
 
-from .models import Assignment, AssignmentRole, AssignmentStatus
+from .models import LEAD_ROLES, Assignment, AssignmentRole, AssignmentStatus
 
 
-def current_convener(committee):
-    """The committee's ACTIVE convener assignment, or None."""
+def holder_filter(holder):
+    """Query terms selecting assignments held by this person, whoever they are."""
+    if isinstance(holder, ExternalMember):
+        return {"external_member": holder}
+    return {"faculty": holder}
+
+
+def current_lead(committee):
+    """
+    The committee's ACTIVE Presiding Officer or Nodal Officer, or None.
+
+    A committee has at most one of these at a time, which the database
+    enforces through uniq_active_lead.
+    """
     return (
         Assignment.objects.active()
-        .select_related("faculty")
-        .filter(committee=committee, role=AssignmentRole.CONVENER)
+        .select_related("faculty", "external_member")
+        .filter(committee=committee, role__in=LEAD_ROLES)
         .first()
     )
 
 
-def validate_assignment(*, faculty, committee, role, order_date):
+def validate_assignment(*, holder, committee, role, order_date):
     """
-    Raise a DomainError if this assignment cannot be made. Writes nothing.
+    Raise a DomainError if this appointment cannot be made. Writes nothing.
 
     Called before an order number is consumed, and again inside
     assign_committee, so the rules hold whichever entry point is used.
     """
     if not committee.is_active:
         raise CommitteeInactive()
-    if not faculty.is_active:
+
+    external = isinstance(holder, ExternalMember)
+    if external and role != AssignmentRole.EXTERNAL_MEMBER:
+        raise RoleNotAllowed(
+            _("Somebody from outside the college can only be appointed as External Member.")
+        )
+    if not external and role == AssignmentRole.EXTERNAL_MEMBER:
+        raise RoleNotAllowed(
+            _("External Member is for people outside the college. Choose another role.")
+        )
+    if not holder.is_active:
         raise FacultyInactive()
-    if role == AssignmentRole.MEMBER and not committee.allows_multiple_members:
+    if role not in LEAD_ROLES and not committee.allows_multiple_members:
         raise RoleNotAllowed()
+
     if (
         Assignment.objects.active()
-        .filter(faculty=faculty, committee=committee, role=role)
+        .filter(committee=committee, role=role, **holder_filter(holder))
         .exists()
     ):
         raise AssignmentConflict()
-    if role == AssignmentRole.CONVENER:
-        holder = current_convener(committee)
-        # The holder's end_date becomes this order's date, so it cannot precede their start.
-        if holder is not None and order_date < holder.start_date:
+
+    if role in LEAD_ROLES:
+        lead = current_lead(committee)
+        # The lead's end_date becomes this order's date, so it cannot precede their start.
+        if lead is not None and order_date < lead.start_date:
             raise OrderDateInvalid(
                 _(
-                    "The order date is before %(name)s became convener on %(date)s. "
+                    "The order date is before %(name)s took charge on %(date)s. "
                     "Choose a later date."
                 )
-                % {"name": holder.faculty.full_name, "date": holder.start_date.strftime("%d-%m-%Y")}
+                % {
+                    "name": lead.holder_name,
+                    "date": lead.start_date.strftime("%d-%m-%Y"),
+                }
             )
 
 
 @transaction.atomic
-def assign_committee(*, faculty, committee, role, order, effective_date=None):
+def assign_committee(*, holder, committee, role, order, effective_date=None):
     """
     Create an ACTIVE assignment issued by `order`.
 
-    Invariants maintained (BR-2, BR-3, BR-8):
-    - at most one ACTIVE convener per committee: assigning a convener
-      supersedes the current one, whose end_date becomes the new order's date,
-      whose ending_order is `order`, and whose superseded_by is the new row;
+    Invariants maintained:
+    - at most one ACTIVE lead per committee: appointing a Presiding Officer or
+      Nodal Officer supersedes the current one, whose end_date becomes the new
+      order's date, whose ending_order is `order`, and whose superseded_by is
+      the new row;
     - adding a member leaves every other assignment untouched;
-    - a faculty member never holds the same ACTIVE role twice in a committee;
+    - nobody holds the same ACTIVE role twice in one committee;
     - all of it happens or none of it does. Nothing is deleted.
     """
     start_date = effective_date or order.order_date
     validate_assignment(
-        faculty=faculty, committee=committee, role=role, order_date=order.order_date
+        holder=holder, committee=committee, role=role, order_date=order.order_date
     )
 
     previous = None
-    if role == AssignmentRole.CONVENER:
+    if role in LEAD_ROLES:
         previous = (
             Assignment.objects.active()
             .select_for_update()
-            .filter(committee=committee, role=AssignmentRole.CONVENER)
+            .filter(committee=committee, role__in=LEAD_ROLES)
             .first()
         )
         if previous is not None:
-            # Must end before the new row is inserted: uniq_active_convener.
+            # Must end before the new row is inserted: uniq_active_lead.
             previous.status = AssignmentStatus.SUPERSEDED
             previous.end_date = order.order_date
             previous.ending_order = order
             previous.save(update_fields=["status", "end_date", "ending_order"])
 
     assignment = Assignment.objects.create(
-        faculty=faculty,
         committee=committee,
         role=role,
         academic_year=order.academic_year,
         status=AssignmentStatus.ACTIVE,
         start_date=start_date,
         issuing_order=order,
+        **holder_filter(holder),
     )
     audit.log(
         action=AuditAction.ASSIGNMENT_CREATED,
         actor=order.issued_by,
         obj=assignment,
-        summary=f"{faculty.full_name} assigned {assignment.get_role_display()} of {committee.code} by {order.order_no}",
+        summary=f"{assignment.holder_name} assigned {assignment.get_role_display()} of {committee.code} by {order.order_no}",
         detail={"order_no": order.order_no, "role": role, "start_date": start_date.isoformat()},
     )
 
@@ -122,7 +154,7 @@ def assign_committee(*, faculty, committee, role, order, effective_date=None):
             action=AuditAction.ASSIGNMENT_SUPERSEDED,
             actor=order.issued_by,
             obj=previous,
-            summary=f"{previous.faculty.full_name} superseded as {previous.get_role_display()} of {committee.code} by {order.order_no}",
+            summary=f"{previous.holder_name} superseded as {previous.get_role_display()} of {committee.code} by {order.order_no}",
             detail={"superseded_by": assignment.pk, "end_date": order.order_date.isoformat()},
         )
     return assignment
@@ -142,7 +174,7 @@ def expire_assignments_for_year(academic_year, *, carry_forward=()):
     expiring = (
         Assignment.objects.active()
         .select_for_update()
-        .select_related("faculty", "committee")
+        .select_related("faculty", "external_member", "committee")
         .filter(academic_year=academic_year)
         .exclude(pk__in=keep)
     )
@@ -154,7 +186,7 @@ def expire_assignments_for_year(academic_year, *, carry_forward=()):
         audit.log(
             action=AuditAction.ASSIGNMENT_EXPIRED,
             obj=assignment,
-            summary=f"{assignment.faculty.full_name}, {assignment.committee.code}: expired at end of {academic_year.label}",
+            summary=f"{assignment.holder_name}, {assignment.committee.code}: expired at end of {academic_year.label}",
             detail={"end_date": academic_year.end_date.isoformat()},
         )
         count += 1
@@ -185,7 +217,7 @@ def relinquish_assignment(*, assignment, order):
         action=AuditAction.ASSIGNMENT_RELINQUISHED,
         actor=order.issued_by,
         obj=assignment,
-        summary=f"{assignment.faculty.full_name} relinquished {assignment.get_role_display()} of {assignment.committee.code} by {order.order_no}",
+        summary=f"{assignment.holder_name} relinquished {assignment.get_role_display()} of {assignment.committee.code} by {order.order_no}",
         detail={"order_no": order.order_no, "end_date": order.order_date.isoformat()},
     )
     return assignment
@@ -207,7 +239,7 @@ def cancel_assignment(*, assignment, cancelling_order):
         action=AuditAction.ASSIGNMENT_CANCELLED,
         actor=cancelling_order.issued_by,
         obj=assignment,
-        summary=f"{assignment.faculty.full_name}, {assignment.committee.code}: assignment cancelled by {cancelling_order.order_no}",
+        summary=f"{assignment.holder_name}, {assignment.committee.code}: assignment cancelled by {cancelling_order.order_no}",
         detail={"order_no": cancelling_order.order_no},
     )
     return assignment
@@ -220,24 +252,24 @@ def restore_superseded(*, assignment, actor=None):
     is cancelled (BR-6).
 
     Invariants: end_date, ending_order and superseded_by are cleared, because
-    the event that ended it no longer stands. Refuses when the role is
-    already filled again, rather than breaking uniq_active_convener.
+    the event that ended it no longer stands. Refuses when the role is already
+    filled again, rather than breaking uniq_active_lead.
     """
     if assignment.status != AssignmentStatus.SUPERSEDED:
-        raise AssignmentNotActive(
-            _("Only a superseded assignment can be restored.")
-        )
+        raise AssignmentNotActive(_("Only a superseded assignment can be restored."))
+
+    holder = assignment.holder
     clash = (
         Assignment.objects.active()
         .filter(
             committee=assignment.committee,
             role=assignment.role,
-            faculty=assignment.faculty,
+            **holder_filter(holder),
         )
         .exists()
     )
-    if assignment.role == AssignmentRole.CONVENER:
-        clash = clash or current_convener(assignment.committee) is not None
+    if assignment.role in LEAD_ROLES:
+        clash = clash or current_lead(assignment.committee) is not None
     if clash:
         raise RestoreBlocked()
 
@@ -250,7 +282,7 @@ def restore_superseded(*, assignment, actor=None):
         action=AuditAction.ASSIGNMENT_RESTORED,
         actor=actor,
         obj=assignment,
-        summary=f"{assignment.faculty.full_name} restored as {assignment.get_role_display()} of {assignment.committee.code}",
+        summary=f"{assignment.holder_name} restored as {assignment.get_role_display()} of {assignment.committee.code}",
         detail={"status": AssignmentStatus.ACTIVE},
     )
     return assignment

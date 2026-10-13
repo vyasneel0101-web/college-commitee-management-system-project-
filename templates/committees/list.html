@@ -18,7 +18,7 @@
   <thead>
     <tr>
       <th scope="col">{% translate "Committee" %}</th>
-      <th scope="col">{% translate "Convener" %}</th>
+      <th scope="col">{% translate "In charge" %}</th>
       <th scope="col">{% translate "Members" %}</th>
       <th scope="col">{% translate "Template" %}</th>
     </tr>
@@ -32,11 +32,11 @@
         {% if not committee.is_active %}<span class="pill pill-history mt-1">{% translate "Inactive" %}</span>{% endif %}
         {% if not committee.allows_multiple_members %}<span class="block text-sm text-[#556070]">{% translate "Convener only" %}</span>{% endif %}
       </td>
-      <td data-label="{% translate 'Convener' %}">
-        {% for assignment in committee.held_by %}{% if assignment.role == "CONVENER" %}{{ assignment.faculty.full_name }}{% endif %}{% empty %}<span class="text-[#556070]">{% translate "Nobody" %}</span>{% endfor %}
+      <td data-label="{% translate 'In charge' %}">
+        {% for assignment in committee.held_by %}{% if assignment.role == "PRESIDING_OFFICER" or assignment.role == "NODAL_OFFICER" %}{{ assignment.holder_name }} <span class="block text-sm text-[#556070]">{{ assignment.get_role_display }}</span>{% endif %}{% empty %}<span class="text-[#556070]">{% translate "Nobody" %}</span>{% endfor %}
       </td>
       <td data-label="{% translate 'Members' %}">
-        {% for assignment in committee.held_by %}{% if assignment.role == "MEMBER" %}{{ assignment.faculty.full_name }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}
+        {% for assignment in committee.held_by %}{% if assignment.role == "MEMBER" or assignment.role == "EXTERNAL_MEMBER" %}{{ assignment.holder_name }}{% if assignment.external_member %} <span class="text-[#7A5A1F]">({% translate "external" %})</span>{% endif %}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}
       </td>
       <td data-label="{% translate 'Template' %}">
         {% for template in committee.active_template %}{% blocktranslate with version=template.version %}Version {{ version }}{% endblocktranslate %}{% empty %}<span class="text-[#7A5A1F]">{% translate "None uploaded" %}</span>{% endfor %}
