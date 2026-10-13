@@ -80,7 +80,12 @@ def assign(request):
             return redirect("orders:detail", pk=order.pk)
         preview = services.preview_assignment_order(**details, issued_by=request.user)
     except DomainError as exc:
-        form.add_error(None, exc.message)
+        row = getattr(exc, "appointment_index", None)
+        rows = formset.forms
+        if row is not None and row < len(rows):
+            rows[row].add_error(None, exc.message)
+        else:
+            form.add_error(None, exc.message)
         return render(request, "orders/assign.html", context)
     context["preview"] = preview
     context["appointments"] = [

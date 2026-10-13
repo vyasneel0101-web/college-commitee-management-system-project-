@@ -32,6 +32,7 @@ from audit import services as audit
 from audit.models import AuditAction
 from core.exceptions import (
     AssignmentNotActive,
+    DomainError,
     CancellationReasonRequired,
     DuplicateAppointment,
     NoAppointments,
@@ -94,6 +95,12 @@ def peek_next_order_no(academic_year, committee) -> str:
     return _format_order_no(academic_year, committee, (last or 0) + 1)
 
 
+def _on_row(error, index):
+    """Tag a domain error with the appointment it concerns, and return it."""
+    error.appointment_index = index
+    return error
+
+
 def _check_assignment_order(
     *, committee, appointments, order_date, issued_by, academic_year
 ):
@@ -118,29 +125,39 @@ def _check_assignment_order(
         )
 
     seen = set()
-    lead_roles_named = 0
-    for holder, role in appointments:
+    leads = []
+    for index, (holder, role) in enumerate(appointments):
         key = (type(holder).__name__, holder.pk, role)
         if key in seen:
-            raise DuplicateAppointment(
-                _("%(name)s is named twice in the same role on this order.")
-                % {"name": holder.full_name}
+            raise _on_row(
+                DuplicateAppointment(
+                    _("%(name)s is named twice in the same role on this order.")
+                    % {"name": holder.full_name}
+                ),
+                index,
             )
         seen.add(key)
         if role in LEAD_ROLES:
-            lead_roles_named += 1
-        validate_assignment(
-            holder=holder, committee=committee, role=role, order_date=order_date
-        )
-    if lead_roles_named > 1:
-        raise DuplicateAppointment(
-            _("An order can name only one Presiding Officer or Nodal Officer.")
+            leads.append(index)
+        try:
+            validate_assignment(
+                holder=holder, committee=committee, role=role, order_date=order_date
+            )
+        except DomainError as exc:
+            # So the screen can show the message against the person it concerns.
+            raise _on_row(exc, index) from None
+    if len(leads) > 1:
+        raise _on_row(
+            DuplicateAppointment(
+                _("An order can name only one Presiding Officer or Nodal Officer.")
+            ),
+            leads[1],
         )
 
     template = committee.templates.filter(is_active=True).first()
     if template is None:
         raise TemplateMissing()
-    previous_lead = current_lead(committee) if lead_roles_named else None
+    previous_lead = current_lead(committee) if leads else None
     return academic_year, template, previous_lead
 
 

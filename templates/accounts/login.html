@@ -38,14 +38,28 @@
   {% if demo_mode %}
   <div class="mt-10 border-t border-[#CBD2DB] pt-5 text-sm text-[#3A4453]">
     <p class="font-semibold text-[#1B2330]">{% translate "Demonstration accounts" %}</p>
-    <p class="mt-1">
-      {% blocktranslate trimmed %}
-        Sign in as <span class="font-medium">principal@gpbhuj-demo.local</span>, or as a
-        faculty member such as <span class="font-medium">kiran.vasava@gpbhuj-demo.local</span>.
-        Every demonstration account uses the password <span class="font-medium">demo1234</span>.
-      {% endblocktranslate %}
-    </p>
+    <p class="mt-1">{% translate "Every demonstration account uses the password demo1234. Tap one to fill the form, so nothing has to be typed." %}</p>
+    <div class="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+      <button type="button" class="link demo-fill" data-email="principal@gpbhuj-demo.local">{% translate "Principal" %}</button>
+      <button type="button" class="link demo-fill" data-email="mihir.patel@gpbhuj-demo.local">{% translate "Mihir Patel (3 committees)" %}</button>
+      <button type="button" class="link demo-fill" data-email="kiran.vasava@gpbhuj-demo.local">{% translate "Kiran Vasava" %}</button>
+    </div>
   </div>
+
+  <script>
+    // Demonstration only: this block is absent once DEMO_MODE is off.
+    (function () {
+      var email = document.getElementById("id_username");
+      var password = document.getElementById("id_password");
+      document.querySelectorAll(".demo-fill").forEach(function (button) {
+        button.addEventListener("click", function () {
+          email.value = button.dataset.email;
+          password.value = "demo1234";
+          password.focus();
+        });
+      });
+    })();
+  </script>
   {% endif %}
 </div>
 {% endblock %}

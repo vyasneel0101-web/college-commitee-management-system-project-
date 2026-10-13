@@ -43,6 +43,7 @@
           <td data-label="{% translate 'Person' %}">
             {{ row.person }}
             {% if row.person.errors %}<p class="error-text mt-1 text-sm">{{ row.person.errors|join:" " }}</p>{% endif %}
+            {% for error in row.non_field_errors %}<p class="error-text mt-1 text-sm">{{ error }}</p>{% endfor %}
           </td>
           <td data-label="{% translate 'Role' %}">
             {{ row.role }}

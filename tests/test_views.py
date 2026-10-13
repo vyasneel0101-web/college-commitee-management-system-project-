@@ -281,6 +281,45 @@ class TestAssignFlow:
         assert "only one Presiding Officer or Nodal Officer" in response.content.decode()
         assert Order.objects.count() == 0
 
+    def test_a_clash_names_the_person_and_marks_their_row(
+        self, principal_client, faculty, other_faculty, committee, issue_order
+    ):
+        """With several people on one order, "this member" would not say who."""
+        issue_order(faculty=faculty, committee=committee, role=AssignmentRole.MEMBER)
+        response = principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(
+                committee,
+                [
+                    (other_faculty, AssignmentRole.PRESIDING_OFFICER),
+                    (faculty, AssignmentRole.MEMBER),
+                ],
+            ),
+        )
+        html = response.content.decode()
+        assert f"{faculty.full_name} is already Member of {escape(committee.name)}" in html
+        formset = response.context["formset"]
+        assert formset.forms[1].non_field_errors(), "the error belongs to the second row"
+        assert not formset.forms[0].non_field_errors()
+        assert Order.objects.count() == 1
+
+    def test_an_external_clash_does_not_call_them_a_faculty_member(
+        self, principal_client, external_member, committee, issue_order
+    ):
+        issue_order(
+            committee=committee,
+            appointments=[(external_member, AssignmentRole.EXTERNAL_MEMBER)],
+        )
+        response = principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(
+                committee, [(external_member, AssignmentRole.EXTERNAL_MEMBER)]
+            ),
+        )
+        html = response.content.decode()
+        assert f"{external_member.full_name} is already External Member" in html
+        assert "faculty member" not in html
+
     def test_the_same_person_twice_on_one_order_is_refused(
         self, principal_client, faculty, committee, year
     ):

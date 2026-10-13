@@ -60,25 +60,53 @@ def validate_assignment(*, holder, committee, role, order_date):
         raise CommitteeInactive()
 
     external = isinstance(holder, ExternalMember)
+    name = holder.full_name
+    role_label = str(AssignmentRole(role).label)
+
     if external and role != AssignmentRole.EXTERNAL_MEMBER:
         raise RoleNotAllowed(
-            _("Somebody from outside the college can only be appointed as External Member.")
+            _(
+                "%(name)s is from outside the college and can only be appointed as "
+                "External Member."
+            )
+            % {"name": name}
         )
     if not external and role == AssignmentRole.EXTERNAL_MEMBER:
         raise RoleNotAllowed(
-            _("External Member is for people outside the college. Choose another role.")
+            _(
+                "External Member is for people outside the college. Choose another role "
+                "for %(name)s."
+            )
+            % {"name": name}
         )
     if not holder.is_active:
-        raise FacultyInactive()
+        raise FacultyInactive(
+            _("%(name)s is no longer active and cannot be appointed.") % {"name": name}
+        )
     if role not in LEAD_ROLES and not committee.allows_multiple_members:
-        raise RoleNotAllowed()
+        raise RoleNotAllowed(
+            _("%(committee)s takes one person in charge and no members.")
+            % {"committee": committee.name}
+        )
 
-    if (
+    held = (
         Assignment.objects.active()
         .filter(committee=committee, role=role, **holder_filter(holder))
-        .exists()
-    ):
-        raise AssignmentConflict()
+        .first()
+    )
+    if held is not None:
+        raise AssignmentConflict(
+            _(
+                "%(name)s is already %(role)s of %(committee)s, since %(since)s. "
+                "Issue a relinquishment order first, or choose a different role."
+            )
+            % {
+                "name": name,
+                "role": role_label,
+                "committee": committee.name,
+                "since": held.start_date.strftime("%d-%m-%Y"),
+            }
+        )
 
     if role in LEAD_ROLES:
         lead = current_lead(committee)
