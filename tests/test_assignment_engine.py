@@ -14,7 +14,7 @@ from assignments.models import Assignment, AssignmentRole, AssignmentStatus
 from assignments.services import (
     expire_assignments_for_year,
     relinquish_assignment,
-    restore_superseded,
+    restore_ended,
 )
 from audit.models import AuditLogEntry
 from core.exceptions import (
@@ -217,7 +217,7 @@ def test_10_restore_returns_a_superseded_row_to_active(
     Assignment.objects.filter(pk=replacement.pk).update(
         status=AssignmentStatus.CANCELLED, end_date=date(2026, 8, 3)
     )
-    restore_superseded(assignment=superseded)
+    restore_ended(assignment=superseded)
     superseded.refresh_from_db()
 
     assert superseded.status == AssignmentStatus.ACTIVE
@@ -233,17 +233,15 @@ def test_10b_restore_is_refused_when_the_role_is_filled_again(
     issue_order(faculty=other_faculty, committee=committee, order_date=date(2026, 8, 4))
     superseded = Assignment.objects.get(faculty=faculty)
     with pytest.raises(RestoreBlocked):
-        restore_superseded(assignment=superseded)
+        restore_ended(assignment=superseded)
     superseded.refresh_from_db()
     assert superseded.status == AssignmentStatus.SUPERSEDED
 
 
-def test_10c_only_a_superseded_assignment_can_be_restored(
-    faculty, committee, issue_order
-):
+def test_10c_an_active_assignment_cannot_be_restored(faculty, committee, issue_order):
     order = issue_order(faculty=faculty, committee=committee)
     with pytest.raises(AssignmentNotActive):
-        restore_superseded(assignment=order.created_assignments.get())
+        restore_ended(assignment=order.created_assignments.get())
 
 
 def test_11_three_way_handover_produces_a_correct_chain(

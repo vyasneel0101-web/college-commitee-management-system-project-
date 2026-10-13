@@ -44,9 +44,19 @@
     {% endfor %}
     {% for assignment in ended %}
     <li class="border-b border-[#CBD2DB] px-4 py-3 last:border-b-0">
-      {% blocktranslate trimmed with name=assignment.holder_name role=assignment.get_role_display %}
-        Superseded <strong>{{ name }}</strong> as {{ role }}
-      {% endblocktranslate %}
+      {% if assignment.status == "SUPERSEDED" %}
+        {% blocktranslate trimmed with name=assignment.holder_name role=assignment.get_role_display %}
+          Superseded <strong>{{ name }}</strong> as {{ role }}
+        {% endblocktranslate %}
+      {% elif assignment.status == "CANCELLED" %}
+        {% blocktranslate trimmed with name=assignment.holder_name role=assignment.get_role_display committee=assignment.committee.name %}
+          Withdrew the appointment of <strong>{{ name }}</strong> as {{ role }} of {{ committee }}
+        {% endblocktranslate %}
+      {% else %}
+        {% blocktranslate trimmed with name=assignment.holder_name role=assignment.get_role_display committee=assignment.committee.name %}
+          Relieved <strong>{{ name }}</strong> as {{ role }} of {{ committee }}
+        {% endblocktranslate %}
+      {% endif %}
       <span class="mt-1 block">{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}</span>
     </li>
     {% endfor %}

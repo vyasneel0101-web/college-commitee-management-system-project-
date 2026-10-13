@@ -273,18 +273,21 @@ def cancel_assignment(*, assignment, cancelling_order):
     return assignment
 
 
+RESTORABLE = (AssignmentStatus.SUPERSEDED, AssignmentStatus.RELINQUISHED)
+
+
 @transaction.atomic
-def restore_superseded(*, assignment, actor=None):
+def restore_ended(*, assignment, actor=None):
     """
-    Return a SUPERSEDED assignment to ACTIVE when the order that replaced it
-    is cancelled (BR-6).
+    Return an assignment to ACTIVE when the order that ended it is cancelled
+    (BR-6) — whether it was superseded by a new person in charge, or relieved.
 
     Invariants: end_date, ending_order and superseded_by are cleared, because
     the event that ended it no longer stands. Refuses when the role is already
     filled again, rather than breaking uniq_active_lead.
     """
-    if assignment.status != AssignmentStatus.SUPERSEDED:
-        raise AssignmentNotActive(_("Only a superseded assignment can be restored."))
+    if assignment.status not in RESTORABLE:
+        raise AssignmentNotActive(_("Only an assignment ended by an order can be restored."))
 
     holder = assignment.holder
     clash = (

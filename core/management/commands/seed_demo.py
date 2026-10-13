@@ -165,7 +165,6 @@ MINIMAL_FACULTY = [
 ]
 MINIMAL_HISTORY_2025_26 = [
     ("TPU", "kiran.vasava", LEAD, date(2025, 6, 16)),
-    ("LIB", "mihir.patel", MEM, date(2025, 7, 1)),
 ]
 # Kiran's TPU convenership stands into 2026-27, where Mihir supersedes it.
 MINIMAL_CARRIED_FORWARD = {("TPU", "kiran.vasava", LEAD)}

@@ -36,6 +36,22 @@ def _describe(holder):
     return ", ".join(part for part in parts if part)
 
 
+def _relieved(post):
+    """
+    The roles the Principal ticked to end in this order. Each must still be
+    active: if anything changed since the preview, the order is refused.
+    """
+    ids = {int(value) for value in post.getlist("relieve") if value.isdigit()}
+    found = list(
+        Assignment.objects.active()
+        .filter(pk__in=ids)
+        .select_related("faculty", "external_member", "committee")
+    )
+    if len(found) != len(ids):
+        raise PreviewOutdated()
+    return found
+
+
 def _expected_superseded_id(post):
     """The holder the Principal saw in the preview: an assignment id, or None for nobody."""
     value = post.get("expected_superseded", "")
@@ -85,6 +101,7 @@ def assign(request):
                 remarks=form.cleaned_data["remarks"],
                 references=form.cleaned_data["references"],
                 expected_superseded_id=_expected_superseded_id(request.POST),
+                relieve=_relieved(request.POST),
                 request=request,
             )
             messages.success(request, _("Order issued."))
@@ -99,6 +116,9 @@ def assign(request):
             form.add_error(None, exc.message)
         return render(request, "orders/assign.html", context)
     context["preview"] = preview
+    context["candidates"] = services.relieve_candidates(
+        committee=details["committee"], appointments=details["appointments"]
+    )
     context["appointments"] = [
         {
             "holder": holder,
