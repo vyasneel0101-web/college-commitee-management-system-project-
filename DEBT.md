@@ -9,7 +9,7 @@ faculty record.**
 
 | # | Debt | Why it matters | Fix | Effort |
 |---|---|---|---|---|
-| 1 | SQLite instead of PostgreSQL 18 | `select_for_update` is silently ignored on SQLite, so order numbering is not race-safe. Fine with one Principal clicking one button; not fine in production. | Change `DATABASE_URL`, fresh `migrate`. See `docs/09_LOCAL_POSTGRES.md`. | ~1 hour |
+| 1 | SQLite, deliberately, for LAN deployment | `select_for_update` is ignored on SQLite, so two simultaneous order issues cannot be serialised by a row lock. Mitigated: WAL plus IMMEDIATE transactions queue writers, and `order_no` is unique in the database, so the worst case is a visible error, never two orders sharing a number. Accepted for a single Principal on a college LAN. | Set `DATABASE_URL` to PostgreSQL and re-run `migrate`; no code changes. `docs/09_LOCAL_POSTGRES.md`. | ~1 hour, when load justifies it |
 | 2 | Test suite is partial | 152 tests cover the engine (97%), order generation (95%) and the permission matrix, 85% overall. Still missing: 100% on both services, the concurrency test (meaningless on SQLite), and notification tests. | Finish `docs/05_TESTING.md` §4 and §5 after PostgreSQL lands. | ~0.5 day |
 | 3 | Password auth instead of magic links | Shared demo passwords, no domain restriction. | `docs/03_SECURITY.md` §1. | ~0.5 day |
 | 4 | No permission matrix test | A new endpoint can ship unprotected and nobody notices. | `docs/05_TESTING.md` §3. | ~0.5 day |

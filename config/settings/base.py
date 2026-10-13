@@ -87,6 +87,24 @@ if DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
     _sqlite_name = DATABASES["default"]["NAME"]
     if _sqlite_name != ":memory:" and not Path(_sqlite_name).is_absolute():
         DATABASES["default"]["NAME"] = BASE_DIR / _sqlite_name
+    # Make concurrent use as safe as SQLite allows, for a LAN deployment:
+    #   WAL        - readers never block the writer, so browsing stays responsive
+    #                while an order is being issued;
+    #   IMMEDIATE  - a write transaction takes the write lock when it begins,
+    #                so two simultaneous order issues queue instead of one
+    #                failing late with "database is locked";
+    #   timeout    - wait rather than fail if the lock is briefly held.
+    # Order numbers cannot be duplicated even if this fails: order_no is unique
+    # in the database, so the worst case is an error, never two orders sharing
+    # a number. See DEBT.md item 1.
+    DATABASES["default"].setdefault("OPTIONS", {})
+    DATABASES["default"]["OPTIONS"].update(
+        {
+            "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
+            "transaction_mode": "IMMEDIATE",
+            "timeout": 20,
+        }
+    )
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
