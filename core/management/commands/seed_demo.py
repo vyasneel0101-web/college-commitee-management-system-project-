@@ -187,10 +187,15 @@ class Command(BaseCommand):
         parser.add_argument(
             "--minimal",
             action="store_true",
-            help="Seed only the Principal, two faculty and three committees.",
+            help="Seed only the Principal, two faculty and a few committees.",
+        )
+        parser.add_argument(
+            "--blank",
+            action="store_true",
+            help="People, committees and templates only: no orders, nobody holds anything.",
         )
 
-    def handle(self, *args, reset=False, minimal=False, **options):
+    def handle(self, *args, reset=False, minimal=False, blank=False, **options):
         self.departments = MINIMAL_DEPARTMENTS if minimal else DEPARTMENTS
         self.committee_rows = MINIMAL_COMMITTEES if minimal else COMMITTEES
         self.faculty_rows = MINIMAL_FACULTY if minimal else FACULTY
@@ -218,7 +223,9 @@ class Command(BaseCommand):
             self._templates(committees, principal)
             self._signature(principal)
 
-        if Order.objects.exists():
+        if blank:
+            self.stdout.write("Blank start: no orders issued, nobody holds a committee.")
+        elif Order.objects.exists():
             self.stdout.write(
                 self.style.WARNING(
                     "Orders already exist, so assignments were not seeded again. "
