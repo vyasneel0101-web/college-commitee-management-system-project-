@@ -44,7 +44,7 @@ class FacultyInactive(DomainError):
 
 
 class RoleNotAllowed(DomainError):
-    default_message = _("This committee has a convener only and does not take members.")
+    default_message = _("This committee takes one person in charge and no members.")
 
 
 class OrderDateInvalid(DomainError):

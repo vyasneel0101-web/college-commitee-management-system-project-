@@ -147,7 +147,7 @@ MULTI_MEMBER_2026_27 = [
 ]
 
 REMARKS = {
-    "EXAM": "Duties for the semester-end examinations will be allotted by the convener.",
+    "EXAM": "Duties for the semester-end examinations will be allotted by the Presiding Officer.",
 }
 
 # --minimal: the smallest set that still shows every behaviour — a hand-over,
@@ -166,7 +166,7 @@ MINIMAL_FACULTY = [
 MINIMAL_HISTORY_2025_26 = [
     ("TPU", "kiran.vasava", LEAD, date(2025, 6, 16)),
 ]
-# Kiran's TPU convenership stands into 2026-27, where Mihir supersedes it.
+# Kiran's TPU appointment stands into 2026-27, where Mihir supersedes it.
 MINIMAL_CARRIED_FORWARD = {("TPU", "kiran.vasava", LEAD)}
 MINIMAL_CURRENT_2026_27 = [
     ("TPU", "mihir.patel", LEAD, date(2026, 6, 15)),

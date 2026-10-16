@@ -647,7 +647,7 @@ def cancel_order(*, order, reason, issued_by, order_date=None, request=None):
     )
 
     # Void what the order created before restoring what it displaced, or both
-    # would be ACTIVE for a moment and break uniq_active_convener.
+    # would be ACTIVE for a moment and break uniq_active_lead.
     for assignment in created:
         cancel_assignment(assignment=assignment, cancelling_order=corrigendum)
     for assignment in restored:
