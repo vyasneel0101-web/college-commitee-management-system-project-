@@ -34,7 +34,7 @@ class Committee(models.Model):
     allows_multiple_members = models.BooleanField(
         _("allows multiple members"),
         default=True,
-        help_text=_("If unticked, only a convener may be assigned."),
+        help_text=_("If unticked, only a Presiding Officer or Nodal Officer may be appointed, and no members."),
     )
     is_active = models.BooleanField(_("active"), default=True)
     created_at = models.DateTimeField(_("created at"), auto_now_add=True)
