@@ -103,7 +103,7 @@ def _on_row(error, index):
 
 
 def _check_assignment_order(
-    *, committee, appointments, order_date, issued_by, academic_year, relieve=()
+    *, committee, appointments, order_date, issued_by, academic_year
 ):
     """
     Every check an assignment order must pass, for all of its appointments.
@@ -160,55 +160,7 @@ def _check_assignment_order(
         raise TemplateMissing()
     previous_lead = current_lead(committee) if leads else None
 
-    for assignment in relieve:
-        if assignment.status != AssignmentStatus.ACTIVE:
-            raise PreviewOutdated()
-        if previous_lead is not None and assignment.pk == previous_lead.pk:
-            raise DuplicateAppointment(
-                _(
-                    "%(name)s is superseded automatically by the new person in charge; "
-                    "do not tick them to be relieved as well."
-                )
-                % {"name": assignment.holder_name}
-            )
-        if order_date < assignment.start_date:
-            raise OrderDateInvalid(
-                _("%(name)s has held %(committee)s only since %(date)s; choose a later order date.")
-                % {
-                    "name": assignment.holder_name,
-                    "committee": assignment.committee.name,
-                    "date": assignment.start_date.strftime(DOCUMENT_DATE_FORMAT),
-                }
-            )
     return academic_year, template, previous_lead
-
-
-def relieve_candidates(*, committee, appointments):
-    """
-    Current roles the Principal may end in the same order, as a move or a swap:
-
-    - every other active role of each staff member being appointed, so moving
-      Mihir from TPU to EXAM is one order rather than two;
-    - every active Member and External Member of this committee, so replacing
-      one member with another is one order.
-
-    The committee's person in charge is left out: appointing a new one
-    supersedes them automatically. Nothing here is ever ended without being
-    ticked.
-    """
-    staff = [holder for holder, _role in appointments if not isinstance(holder, ExternalMember)]
-    external = [holder for holder, _role in appointments if isinstance(holder, ExternalMember)]
-    query = Q(committee=committee, role__in=[AssignmentRole.MEMBER, AssignmentRole.EXTERNAL_MEMBER])
-    if staff:
-        query |= Q(faculty__in=staff)
-    if external:
-        query |= Q(external_member__in=external)
-    return list(
-        Assignment.objects.active()
-        .filter(query)
-        .select_related("faculty", "external_member", "committee")
-        .order_by("committee__name", "faculty__full_name", "external_member__full_name")
-    )
 
 
 def preview_assignment_order(
@@ -270,12 +222,10 @@ def issue_assignment_order(
     remarks="",
     references="",
     expected_superseded_id=NOT_CHECKED,
-    relieve=(),
     request=None,
 ):
     """
-    Issue one order appointing one or more people to a committee, and
-    optionally relieving people of current roles in the same order.
+    Issue one order appointing one or more people to a committee.
 
     `appointments` is a sequence of (holder, role) pairs, where a holder is a
     User or an ExternalMember. Real orders name between two and eight people
@@ -297,14 +247,12 @@ def issue_assignment_order(
       argument that turns it off.
     """
     appointments = list(appointments)
-    relieve = list(relieve)
     academic_year, template, previous_lead = _check_assignment_order(
         committee=committee,
         appointments=appointments,
         order_date=order_date,
         issued_by=issued_by,
         academic_year=academic_year,
-        relieve=relieve,
     )
     if expected_superseded_id is not NOT_CHECKED:
         actual_superseded_id = previous_lead.pk if previous_lead else None
@@ -336,15 +284,6 @@ def issue_assignment_order(
         "effective_date": effective_date.strftime(DOCUMENT_DATE_FORMAT),
         "previous_holder_name": previous_lead.holder_name if previous_lead else "",
         "references": references,
-        # People this order ends, for templates that print a relieved list.
-        "relieved_list": [
-            {
-                "name": assignment.holder_name,
-                "role": assignment.get_role_display(),
-                "committee": assignment.committee.name,
-            }
-            for assignment in relieve
-        ],
         "remarks": remarks or "—",
     }
     signature = issued_by.signature_image
@@ -376,10 +315,6 @@ def issue_assignment_order(
     order.generated_file.save(f"{order_no}.docx", ContentFile(buffer.getvalue()), save=False)
     try:
         order.save()
-        # End the relieved roles first, so a swap within one committee never
-        # has both the old and the new member active at once.
-        for assignment in relieve:
-            relinquish_assignment(assignment=assignment, order=order)
         created = [
             assign_committee(
                 holder=holder,
@@ -405,7 +340,6 @@ def issue_assignment_order(
             "order_type": OrderType.ASSIGNMENT,
             "assignment_ids": [a.pk for a in created],
             "superseded_assignment_id": previous_lead.pk if previous_lead else None,
-            "relieved_assignment_ids": [a.pk for a in relieve],
             "template_version": template.version,
             "demo_mode": settings.DEMO_MODE,
         },

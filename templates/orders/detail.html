@@ -38,7 +38,7 @@
       <span class="text-[#556070]">· {{ assignment.holder_detail }}</span>
       <span class="mt-1 block">{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}</span>
       {% if user.is_principal and assignment.status == "ACTIVE" %}
-      <a class="link no-print mt-1 block text-sm" href="{% url 'orders:relinquish' assignment.pk %}">{% translate "Relinquish this committee" %}</a>
+      <a class="link no-print mt-1 block text-sm" href="{% url 'orders:relinquish' assignment.pk %}">{% translate "Remove from committee" %}</a>
       {% endif %}
     </li>
     {% endfor %}

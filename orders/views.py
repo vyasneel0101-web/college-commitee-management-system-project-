@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_http_methods, require_safe
 
@@ -34,22 +35,6 @@ def _describe(holder):
     if holder.department:
         parts.append(holder.department.name)
     return ", ".join(part for part in parts if part)
-
-
-def _relieved(post):
-    """
-    The roles the Principal ticked to end in this order. Each must still be
-    active: if anything changed since the preview, the order is refused.
-    """
-    ids = {int(value) for value in post.getlist("relieve") if value.isdigit()}
-    found = list(
-        Assignment.objects.active()
-        .filter(pk__in=ids)
-        .select_related("faculty", "external_member", "committee")
-    )
-    if len(found) != len(ids):
-        raise PreviewOutdated()
-    return found
 
 
 def _expected_superseded_id(post):
@@ -101,7 +86,6 @@ def assign(request):
                 remarks=form.cleaned_data["remarks"],
                 references=form.cleaned_data["references"],
                 expected_superseded_id=_expected_superseded_id(request.POST),
-                relieve=_relieved(request.POST),
                 request=request,
             )
             messages.success(request, _("Order issued."))
@@ -116,9 +100,6 @@ def assign(request):
             form.add_error(None, exc.message)
         return render(request, "orders/assign.html", context)
     context["preview"] = preview
-    context["candidates"] = services.relieve_candidates(
-        committee=details["committee"], appointments=details["appointments"]
-    )
     context["appointments"] = [
         {
             "holder": holder,
@@ -226,7 +207,10 @@ def cancel(request, pk):
 @principal_required
 @require_http_methods(["GET", "POST"])
 def relinquish(request, pk):
-    """End an active assignment with no replacement, by order (BR-4)."""
+    """
+    Remove someone from a committee, with nobody replacing them, by order
+    (BR-4). Nothing is erased: the role ends and moves to their past committees.
+    """
     assignment = get_object_or_404(
         Assignment.objects.active().select_related("faculty", "committee"), pk=pk
     )
@@ -243,6 +227,18 @@ def relinquish(request, pk):
         except DomainError as exc:
             form.add_error(None, exc.message)
         else:
-            messages.success(request, _("Relinquishment order issued."))
+            messages.success(
+                request,
+                _("%(name)s removed from %(committee)s by order %(number)s.")
+                % {
+                    "name": assignment.holder_name,
+                    "committee": assignment.committee.name,
+                    "number": order.order_no,
+                },
+            )
+            back = request.POST.get("next", "")
+            if url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}):
+                return redirect(back)
             return redirect("orders:detail", pk=order.pk)
-    return render(request, "orders/relinquish.html", {"assignment": assignment, "form": form})
+    context = {"assignment": assignment, "form": form, "next": request.GET.get("next", "")}
+    return render(request, "orders/relinquish.html", context)

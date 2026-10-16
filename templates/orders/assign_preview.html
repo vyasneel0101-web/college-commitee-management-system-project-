@@ -66,28 +66,6 @@
   </div>
 </dl>
 
-{% if candidates %}
-<fieldset class="mt-6 max-w-3xl border border-[#CBD2DB] bg-white px-4 py-4">
-  <legend class="px-1 text-lg font-semibold">{% translate "Relieve anyone in the same order?" %}</legend>
-  <p class="text-sm text-[#3A4453]">
-    {% translate "Tick a role to end it with this order — for example to move someone from one committee to another, or to replace one member with another. Nothing is ended unless it is ticked." %}
-  </p>
-  <ul class="mt-3 space-y-2">
-    {% for assignment in candidates %}
-    <li>
-      <label class="flex items-start gap-3" for="relieve-{{ assignment.pk }}">
-        <input type="checkbox" form="issue-form" name="relieve" value="{{ assignment.pk }}" id="relieve-{{ assignment.pk }}" class="mt-1">
-        <span>
-          <strong>{{ assignment.holder_name }}</strong> — {{ assignment.get_role_display }} of {{ assignment.committee.name }}
-          <span class="block text-sm text-[#556070]">{% blocktranslate with since=assignment.start_date|date:"j M Y" %}Held since {{ since }}{% endblocktranslate %}</span>
-        </span>
-      </label>
-    </li>
-    {% endfor %}
-  </ul>
-</fieldset>
-{% endif %}
-
 {% if demo_mode %}
 <p class="mt-4 max-w-3xl text-sm text-[#3A4453]">{% translate "Demonstration system: the document will carry the line “SPECIMEN — DEMONSTRATION ONLY — NOT AN OFFICIAL ORDER”, and the signature is a stored image, not a digital signature." %}</p>
 {% endif %}

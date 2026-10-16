@@ -2,11 +2,13 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_http_methods, require_safe
 
 from accounts.decorators import principal_required
-from assignments.models import Assignment
+from assignments.models import Assignment, AssignmentRole
+from orders.forms import holder_choices
 from core.exceptions import DomainError
 
 from . import services
@@ -60,8 +62,24 @@ def committee_edit(request, pk):
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, _("Committee saved."))
-        return redirect("committees:detail", pk=committee.pk)
-    return render(request, "committees/form.html", {"form": form, "committee": committee})
+        return redirect("committees:edit", pk=committee.pk)
+    context = {
+        "form": form,
+        "committee": committee,
+        # Members are managed here: removing one issues a relinquishment
+        # order, adding one goes through the usual preview and order.
+        "held_by": list(
+            Assignment.objects.active()
+            .select_related("faculty", "faculty__department", "external_member")
+            .filter(committee=committee)
+            .order_by("role", "faculty__full_name", "external_member__full_name")
+        ),
+        # holder_choices() starts with the empty "choose" row, then groups.
+        "person_groups": [choice for choice in holder_choices() if choice[0]],
+        "role_choices": AssignmentRole.choices,
+        "today": timezone.localdate(),
+    }
+    return render(request, "committees/form.html", context)
 
 
 @login_required

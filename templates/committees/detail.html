@@ -11,7 +11,7 @@
 {% if user.is_principal %}
 <div class="no-print mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
   <a class="btn-primary" href="{% url 'orders:assign' %}">{% translate "Assign committee" %}</a>
-  <a class="link" href="{% url 'committees:edit' committee.pk %}">{% translate "Edit committee" %}</a>
+  <a class="link" href="{% url 'committees:edit' committee.pk %}">{% translate "Edit committee and members" %}</a>
   <a class="link" href="{% url 'committees:template' committee.pk %}">{% translate "Upload order template" %}</a>
 </div>
 {% endif %}
