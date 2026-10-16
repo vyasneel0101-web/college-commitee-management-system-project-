@@ -164,6 +164,7 @@
       </a>
       {% if user.is_authenticated %}
         <div class="no-print flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#556070]">
+          <a class="link font-medium" href="{% url 'notifications:list' %}">{% translate "Notifications" %}{% if unread_notifications %} <span class="ml-1 inline-block rounded-full bg-[#1D4E89] px-2 text-xs font-semibold leading-5 text-white tabular-nums" aria-label="{% blocktranslate count counter=unread_notifications %}{{ counter }} unread{% plural %}{{ counter }} unread{% endblocktranslate %}">{{ unread_notifications }}</span>{% endif %}</a>
           <span>{{ user.full_name|default:user.email }}{% if user.is_principal %} · {% translate "Principal" %}{% endif %}</span>
           <form method="post" action="{% url 'accounts:logout' %}">
             {% csrf_token %}

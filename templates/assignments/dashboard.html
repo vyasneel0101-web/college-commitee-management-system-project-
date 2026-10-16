@@ -24,6 +24,24 @@
 </div>
 {% endif %}
 
+{% if updates %}
+<section class="mt-8" aria-labelledby="updates-heading">
+  <div class="flex flex-wrap items-baseline justify-between gap-2">
+    <h2 id="updates-heading" class="text-lg font-semibold">{% translate "Recent updates" %}</h2>
+    <a class="link text-sm" href="{% url 'notifications:list' %}">{% translate "All notifications" %}</a>
+  </div>
+  <ul class="mt-3 border border-[#CBD2DB] bg-white">
+    {% for update in updates %}
+    <li class="border-b border-[#CBD2DB] px-4 py-3 last:border-b-0{% if update.is_unread %} border-l-4 border-l-[#1D4E89]{% endif %}">
+      {% if update.is_unread %}<span class="pill pill-active mb-1">{% translate "New" %}</span>{% endif %}
+      <p>{{ update.message }}</p>
+      <p class="mt-1 text-sm text-[#556070]">{{ update.created_at|date:"j M Y, H:i" }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 <section class="mt-10" aria-labelledby="held-heading">
   <h2 id="held-heading" class="text-lg font-semibold">{% translate "Held now" %}</h2>
   {% if active %}

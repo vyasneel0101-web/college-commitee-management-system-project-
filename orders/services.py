@@ -45,6 +45,7 @@ from core.exceptions import (
     TemplateMissing,
 )
 from core.models import AcademicYear
+from notifications.services import notify_committee
 
 from .models import Order, OrderSequence, OrderTemplate, OrderType
 
@@ -345,6 +346,19 @@ def issue_assignment_order(
         },
         request=request,
     )
+    appointed = "; ".join(f"{row['name']} appointed {row['role']}" for row in members)
+    message = f"{committee.name}: {appointed}."
+    if previous_lead is not None:
+        message += (
+            f" {previous_lead.holder_name} is no longer {previous_lead.get_role_display()}."
+        )
+    notify_committee(
+        committee=committee,
+        order=order,
+        message=f"{message} Order {order_no}.",
+        also=[previous_lead.faculty] if previous_lead and previous_lead.faculty else [],
+        exclude=issued_by,
+    )
     return order
 
 
@@ -516,6 +530,13 @@ def issue_relinquishment_order(
         },
         request=request,
     )
+    notify_committee(
+        committee=committee,
+        order=order,
+        message=f"{committee.name}: {holder.full_name} removed as {role_label}. Order {order_no}.",
+        also=[assignment.faculty] if assignment.faculty else [],
+        exclude=issued_by,
+    )
     return order
 
 
@@ -648,5 +669,17 @@ def cancel_order(*, order, reason, issued_by, order_date=None, request=None):
             "restored_assignments": [a.pk for a in restored],
         },
         request=request,
+    )
+    changes = [f"{a.holder_name} is no longer {a.get_role_display()}" for a in created]
+    changes += [f"{a.holder_name} is {a.get_role_display()} again" for a in restored]
+    message = f"{order.committee.name}: order {order.order_no} cancelled by {order_no}."
+    if changes:
+        message += " " + "; ".join(changes) + "."
+    notify_committee(
+        committee=order.committee,
+        order=corrigendum,
+        message=message,
+        also=[a.faculty for a in created if a.faculty],
+        exclude=issued_by,
     )
     return corrigendum

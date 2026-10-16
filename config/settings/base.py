@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "assignments",
     "orders",
     "audit",
+    "notifications",
     "core",
 ]
 
@@ -74,6 +75,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.institution",
+                "notifications.context_processors.unread_count",
             ],
         },
     },
