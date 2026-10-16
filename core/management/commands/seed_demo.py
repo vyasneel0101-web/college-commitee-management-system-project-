@@ -21,10 +21,10 @@ from accounts.validators import validate_signature_image
 from assignments.models import Assignment, AssignmentRole, AssignmentStatus
 from assignments.services import expire_assignments_for_year
 from audit.models import AuditLogEntry
-from committees.models import Committee, CommitteeTemplate
-from committees.services import upload_committee_template
+from committees.models import Committee
 from core.models import AcademicYear
-from orders.models import Order, OrderSequence
+from orders.models import Order, OrderSequence, OrderTemplate
+from orders.order_template import install_order_template
 from orders.services import issue_assignment_order
 
 DEMO_DIR = settings.BASE_DIR / "templates" / "demo"
@@ -302,22 +302,12 @@ class Command(BaseCommand):
         ]
 
     def _templates(self, committees, principal):
-        templates = {"EXAM": "EXAM", "TPU": "TPU"}
-        for code, committee in committees.items():
-            if committee.templates.exists():
-                continue
-            # EXAM is a circular and TPU a single-person office order; every
-            # other committee uses the member-table format, which matches the
-            # college's real orders (docs/11_REAL_ORDERS.md).
-            source = DEMO_DIR / "order_template_{}.docx".format(
-                templates.get(code, "COMMITTEE")
-            )
-            with source.open("rb") as handle:
-                upload_committee_template(
-                    committee=committee,
-                    uploaded_file=File(handle, name=source.name),
-                    uploaded_by=principal,
-                )
+        """One template for every committee, as the college uses a single format."""
+        if OrderTemplate.objects.active() is not None:
+            return
+        source = DEMO_DIR / "order_template.docx"
+        with source.open("rb") as handle:
+            install_order_template(File(handle, name=source.name))
 
     def _signature(self, principal):
         if principal.signature_image:
@@ -380,7 +370,7 @@ class Command(BaseCommand):
             ("  Faculty", User.objects.filter(role=Role.FACULTY).count()),
             ("Committees", Committee.objects.count()),
             ("External members", ExternalMember.objects.count()),
-            ("Committee templates", CommitteeTemplate.objects.count()),
+            ("Order template in use", OrderTemplate.objects.filter(is_active=True).count()),
             ("Orders", Order.objects.count()),
             ("Order sequences", OrderSequence.objects.count()),
             ("Assignments", Assignment.objects.count()),

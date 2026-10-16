@@ -30,7 +30,6 @@ MATRIX = [
     ("committees:detail", "committee_pk", REDIRECT, 200, 200),
     ("committees:create", None, REDIRECT, 403, 200),
     ("committees:edit", "committee_pk", REDIRECT, 403, 200),
-    ("committees:template", "committee_pk", REDIRECT, 403, 200),
     ("orders:assign", None, REDIRECT, 403, 200),
     ("orders:register", None, REDIRECT, 403, 200),
     ("orders:detail", "order_pk", REDIRECT, 404, 200),

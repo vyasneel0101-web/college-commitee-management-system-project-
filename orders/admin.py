@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from core.admin_mixins import ViewOnlyAdminMixin
 
-from .models import Order, OrderSequence
+from .models import OrderTemplate, Order, OrderSequence
 
 
 @admin.register(Order)
@@ -39,3 +39,12 @@ class OrderSequenceAdmin(ViewOnlyAdminMixin, admin.ModelAdmin):
     readonly_fields = fields
     list_display = ("committee", "academic_year", "last_number")
     list_select_related = ("committee", "academic_year")
+
+
+@admin.register(OrderTemplate)
+class OrderTemplateAdmin(ViewOnlyAdminMixin, admin.ModelAdmin):
+    """Installed with `manage.py load_order_template`, which validates the file."""
+
+    fields = ("docx_file", "is_active", "uploaded_at", "detected_placeholders")
+    readonly_fields = fields
+    list_display = ("__str__", "is_active")

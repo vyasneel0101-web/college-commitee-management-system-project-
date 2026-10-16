@@ -30,10 +30,3 @@ class CommitteeForm(forms.ModelForm):
             self.fields["code"].help_text = _(
                 "Fixed: this code appears in order numbers that have already been issued."
             )
-
-
-class CommitteeTemplateForm(forms.Form):
-    docx_file = forms.FileField(
-        label=_("Order template (.docx)"),
-        widget=forms.ClearableFileInput(attrs={"class": "field", "accept": ".docx"}),
-    )

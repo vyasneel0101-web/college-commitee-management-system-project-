@@ -53,10 +53,6 @@
     <dd>{{ preview.academic_year.label }}</dd>
   </div>
   <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
-    <dt class="text-sm text-[#556070]">{% translate "Template" %}</dt>
-    <dd>{% blocktranslate with code=committee.code version=preview.template.version %}{{ code }} template, version {{ version }}{% endblocktranslate %}</dd>
-  </div>
-  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
     <dt class="text-sm text-[#556070]">{% translate "References" %}</dt>
     <dd>{{ form.cleaned_data.references|default:"—"|linebreaksbr }}</dd>
   </div>

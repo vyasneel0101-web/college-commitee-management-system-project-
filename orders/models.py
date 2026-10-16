@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.translation import gettext_lazy as _
 
@@ -19,6 +20,50 @@ def order_file_path(instance, filename):
         f"orders/{instance.academic_year.label}/{instance.committee.code}/"
         f"{slug}-{get_random_string(12)}.docx"
     )
+
+
+def order_template_path(instance, filename):
+    """Never use the uploaded filename on disk. docs/03_SECURITY.md §5."""
+    return f"templates/order-template-{timezone.now():%Y%m%d}-{get_random_string(12)}.docx"
+
+
+class OrderTemplateQuerySet(models.QuerySet):
+    def active(self):
+        """The template new orders are produced from, or None if none is installed."""
+        return self.filter(is_active=True).first()
+
+
+class OrderTemplate(models.Model):
+    """
+    The one Word template every committee's orders are produced from.
+
+    The college uses a single format for all committees, so there is no
+    per-committee template and no version shown to anyone. Earlier files are
+    kept when a new one is installed, because past orders were rendered from
+    them (BR-7). Installed with `manage.py load_order_template`.
+    """
+
+    docx_file = models.FileField(_("Word file"), upload_to=order_template_path, max_length=255)
+    detected_placeholders = models.JSONField(_("detected placeholders"), default=list, blank=True)
+    is_active = models.BooleanField(_("in use"), default=True)
+    uploaded_at = models.DateTimeField(_("installed at"), auto_now_add=True)
+
+    objects = OrderTemplateQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+        verbose_name = _("order template")
+        verbose_name_plural = _("order templates")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_active"],
+                condition=Q(is_active=True),
+                name="one_order_template_in_use",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Order template installed {self.uploaded_at:%d-%m-%Y}"
 
 
 class OrderType(models.TextChoices):
@@ -105,7 +150,7 @@ class Order(ProtectedRecord):
     # Null for relinquishment and corrigendum orders, which are not rendered
     # from a committee template; always set for assignment orders (BR-7).
     template_used = models.ForeignKey(
-        "committees.CommitteeTemplate",
+        OrderTemplate,
         verbose_name=_("template used"),
         on_delete=models.PROTECT,
         null=True,

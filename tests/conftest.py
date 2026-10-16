@@ -14,7 +14,6 @@ from django.core.files import File
 from accounts.models import Department, Designation, GovtClass, Role, User
 from assignments.models import AssignmentRole
 from committees.models import Committee
-from committees.services import upload_committee_template
 from core.models import AcademicYear
 from orders.services import issue_assignment_order
 
@@ -91,18 +90,20 @@ def third_faculty(db, department):
     return _make_user("faculty.three@test.local", "Test Faculty Three", department=department)
 
 
-def _committee(code, name, principal, *, allows_multiple_members=True, template="TPU"):
-    committee = Committee.objects.create(
+def _committee(code, name, principal=None, *, allows_multiple_members=True):
+    return Committee.objects.create(
         code=code, name=name, allows_multiple_members=allows_multiple_members
     )
-    source = settings.BASE_DIR / "tests" / "fixtures" / f"order_template_{template}.docx"
+
+
+@pytest.fixture(autouse=True)
+def order_template(db):
+    """The one template every order uses, installed as it would be at setup."""
+    from orders.order_template import install_order_template
+
+    source = settings.BASE_DIR / "tests" / "fixtures" / "order_template.docx"
     with source.open("rb") as handle:
-        upload_committee_template(
-            committee=committee,
-            uploaded_file=File(handle, name=f"order_template_{template}.docx"),
-            uploaded_by=principal,
-        )
-    return committee
+        return install_order_template(File(handle, name="order_template.docx"))
 
 
 @pytest.fixture
@@ -112,14 +113,14 @@ def committee(db, principal):
 
 @pytest.fixture
 def exam_committee(db, principal):
-    return _committee("EXAM", "Examination Committee", principal, template="EXAM")
+    return _committee("EXAM", "Examination Committee", principal)
 
 
 @pytest.fixture
 def table_committee(db, principal):
     """A committee whose template prints a table of everyone appointed."""
     return _committee(
-        "ICC", "Internal Complaint Committee", principal, template="COMMITTEE"
+        "ICC", "Internal Complaint Committee", principal
     )
 
 

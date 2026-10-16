@@ -80,10 +80,6 @@
     <dt class="text-sm text-[#556070]">{% translate "Issued by" %}</dt>
     <dd>{{ order.issued_by.salutation }} {{ order.issued_by.full_name }}</dd>
   </div>
-  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
-    <dt class="text-sm text-[#556070]">{% translate "Template" %}</dt>
-    <dd>{% blocktranslate with code=order.committee.code version=order.template_used.version %}{{ code }} template, version {{ version }}{% endblocktranslate %}</dd>
-  </div>
   <div class="px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
     <dt class="text-sm text-[#556070]">{% translate "Remarks" %}</dt>
     <dd>{{ order.remarks|default:"—" }}</dd>

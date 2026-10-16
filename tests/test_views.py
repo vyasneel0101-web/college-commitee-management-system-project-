@@ -449,17 +449,17 @@ class TestAssignFlow:
         principal_client.post(reverse("orders:assign"), payload)
         assert Order.objects.get().created_assignments.count() == 2
 
-    def test_a_committee_without_a_template_cannot_be_used(
-        self, principal_client, faculty, db, year
+    def test_a_missing_template_is_explained_rather_than_crashing(
+        self, principal_client, faculty, committee, year
     ):
-        from committees.models import Committee
+        from orders.models import OrderTemplate
 
-        bare = Committee.objects.create(code="NEW", name="Committee Without Template")
+        OrderTemplate.objects.update(is_active=False)
         response = principal_client.post(
             reverse("orders:assign"),
-            assign_payload(bare, [(faculty, AssignmentRole.PRESIDING_OFFICER)]),
+            assign_payload(committee, [(faculty, AssignmentRole.PRESIDING_OFFICER)]),
         )
-        assert "no active order template" in response.content.decode()
+        assert "No order template is installed" in response.content.decode()
         assert Order.objects.count() == 0
 
     def test_issuing_the_same_preview_twice_does_not_duplicate(
@@ -591,54 +591,6 @@ class TestCommitteeManagement:
         )
         committee.refresh_from_db()
         assert committee.code == "TPU"
-
-
-class TestTemplateUpload:
-    def _upload(self, client, committee, name, content):
-        from django.core.files.uploadedfile import SimpleUploadedFile
-
-        return client.post(
-            reverse("committees:template", kwargs={"pk": committee.pk}),
-            {"docx_file": SimpleUploadedFile(name, content)},
-        )
-
-    def test_a_macro_enabled_file_is_rejected(self, principal_client, committee):
-        from django.conf import settings
-
-        source = settings.BASE_DIR / "tests" / "fixtures" / "order_template_TPU.docx"
-        response = self._upload(principal_client, committee, "t.docm", source.read_bytes())
-        assert "Only .docx files are accepted" in response.content.decode()
-        assert committee.templates.count() == 1
-
-    def test_a_file_that_is_not_a_document_is_rejected(self, principal_client, committee):
-        response = self._upload(principal_client, committee, "t.docx", b"not a zip at all")
-        assert "not a valid Word document" in response.content.decode()
-        assert committee.templates.count() == 1
-
-    def test_a_template_missing_placeholders_names_them(self, principal_client, committee):
-        import io
-
-        from docx import Document
-
-        document = Document()
-        document.add_paragraph("Nothing useful here.")
-        buffer = io.BytesIO()
-        document.save(buffer)
-        response = self._upload(principal_client, committee, "bare.docx", buffer.getvalue())
-        body = response.content.decode()
-        assert "missing" in body and "order_no" in body
-        assert committee.templates.count() == 1
-
-    def test_a_valid_upload_supersedes_the_previous_version(
-        self, principal_client, committee
-    ):
-        from django.conf import settings
-
-        source = settings.BASE_DIR / "tests" / "fixtures" / "order_template_EXAM.docx"
-        self._upload(principal_client, committee, "v2.docx", source.read_bytes())
-        assert committee.templates.count() == 2
-        assert committee.templates.filter(is_active=True).count() == 1
-        assert committee.templates.order_by("-version").first().version == 2
 
 
 class TestAuditTrail:

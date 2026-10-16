@@ -9,11 +9,9 @@ from django.views.decorators.http import require_http_methods, require_safe
 from accounts.decorators import principal_required
 from assignments.models import Assignment, AssignmentRole
 from orders.forms import holder_choices
-from core.exceptions import DomainError
 
-from . import services
-from .forms import CommitteeForm, CommitteeTemplateForm
-from .models import Committee, CommitteeTemplate
+from .forms import CommitteeForm
+from .models import Committee
 
 
 @login_required
@@ -31,11 +29,6 @@ def committee_list(request):
                 .select_related("faculty")
                 .order_by("role", "faculty__full_name"),
                 to_attr="held_by",
-            ),
-            Prefetch(
-                "templates",
-                queryset=CommitteeTemplate.objects.filter(is_active=True),
-                to_attr="active_template",
             ),
         )
         .order_by("name")
@@ -94,35 +87,6 @@ def committee_detail(request, pk):
             .filter(committee=committee)
             .order_by("role", "faculty__full_name")
         ),
-        "templates": list(committee.templates.select_related("uploaded_by").order_by("-version")),
         "order_count": committee.orders.count(),
     }
     return render(request, "committees/detail.html", context)
-
-
-@principal_required
-@require_http_methods(["GET", "POST"])
-def committee_template_upload(request, pk):
-    """Upload a new template version. The old version is kept: past orders came from it."""
-    committee = get_object_or_404(Committee, pk=pk)
-    form = CommitteeTemplateForm(request.POST or None, request.FILES or None)
-    if request.method == "POST" and form.is_valid():
-        try:
-            template = services.upload_committee_template(
-                committee=committee,
-                uploaded_file=form.cleaned_data["docx_file"],
-                uploaded_by=request.user,
-            )
-        except DomainError as exc:
-            form.add_error("docx_file", exc.message)
-        else:
-            messages.success(
-                request,
-                _("Template version %(version)s uploaded.") % {"version": template.version},
-            )
-            return redirect("committees:detail", pk=committee.pk)
-    return render(
-        request,
-        "committees/template_upload.html",
-        {"form": form, "committee": committee, "required": services.REQUIRED_PLACEHOLDERS},
-    )

@@ -11,7 +11,7 @@ from core.exceptions import RecordImmutable
 
 
 def committee_template_path(instance, filename):
-    """Never use the uploaded filename on disk. docs/03_SECURITY.md §5."""
+    """Kept only because migration 0001 refers to it. Templates are now global."""
     return (
         f"templates/{timezone.now():%Y}/"
         f"{instance.committee.code}-v{instance.version}-{get_random_string(12)}.docx"
@@ -67,48 +67,3 @@ class Committee(models.Model):
                     )
                 )
         super().save(*args, **kwargs)
-
-
-class CommitteeTemplate(models.Model):
-    """A versioned Word order template. Old versions are kept: they document past orders."""
-
-    committee = models.ForeignKey(
-        Committee,
-        verbose_name=_("committee"),
-        on_delete=models.PROTECT,
-        related_name="templates",
-    )
-    version = models.PositiveIntegerField(_("version"))
-    docx_file = models.FileField(
-        _("Word file"),
-        upload_to=committee_template_path,
-        max_length=255,
-        validators=[FileExtensionValidator(allowed_extensions=["docx"])],
-    )
-    is_active = models.BooleanField(_("active"), default=True)
-    uploaded_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        verbose_name=_("uploaded by"),
-        on_delete=models.PROTECT,
-        related_name="uploaded_templates",
-    )
-    uploaded_at = models.DateTimeField(_("uploaded at"), auto_now_add=True)
-    detected_placeholders = models.JSONField(
-        _("detected placeholders"), default=list, blank=True
-    )
-
-    class Meta:
-        ordering = ["committee_id", "-version"]
-        verbose_name = _("committee template")
-        verbose_name_plural = _("committee templates")
-        unique_together = [("committee", "version")]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["committee"],
-                condition=Q(is_active=True),
-                name="uniq_active_committee_template",
-            ),
-        ]
-
-    def __str__(self):
-        return f"{self.committee.code} v{self.version}"

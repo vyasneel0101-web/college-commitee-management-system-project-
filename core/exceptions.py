@@ -93,7 +93,8 @@ class RestoreBlocked(DomainError):
 
 class TemplateMissing(DomainError):
     default_message = _(
-        "This committee has no active order template. Upload one before issuing orders."
+        "No order template is installed, so orders cannot be produced. "
+        "Ask the system administrator to run load_order_template."
     )
 
 

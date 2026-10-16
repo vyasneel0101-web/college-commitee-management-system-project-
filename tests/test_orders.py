@@ -193,44 +193,49 @@ class TestRendering:
         order = issue_order(faculty=faculty, committee=committee)
         assert SPECIMEN_LINE not in document_text(order)
 
-    def test_a_committee_without_a_template_cannot_issue(
-        self, faculty, principal, db, year
+    def test_nothing_can_be_issued_without_an_installed_template(
+        self, faculty, committee, issue_order, order_template
     ):
-        from committees.models import Committee
+        from orders.models import OrderTemplate
 
-        bare = Committee.objects.create(code="NEW", name="Committee Without Template")
+        OrderTemplate.objects.update(is_active=False)
         with pytest.raises(TemplateMissing):
-            issue_assignment_order(
-                committee=bare,
-                appointments=[(faculty, AssignmentRole.PRESIDING_OFFICER)],
-                order_date=date(2026, 7, 1),
-                issued_by=principal,
-            )
+            issue_order(faculty=faculty, committee=committee)
         assert Order.objects.count() == 0
 
-    def test_a_stored_document_is_untouched_by_a_later_template(
-        self, faculty, other_faculty, committee, issue_order, principal
+    def test_every_committee_uses_the_same_template(
+        self, faculty, committee, exam_committee, issue_order, order_template
+    ):
+        first = issue_order(faculty=faculty, committee=committee)
+        second = issue_order(faculty=faculty, committee=exam_committee)
+        assert first.template_used == second.template_used == order_template
+
+    def test_a_new_committee_can_issue_at_once(self, faculty, issue_order, db):
+        from committees.models import Committee
+
+        fresh = Committee.objects.create(code="NEW", name="Brand New Committee")
+        assert issue_order(faculty=faculty, committee=fresh).generated_file
+
+    def test_a_stored_document_is_untouched_by_a_new_template(
+        self, faculty, committee, issue_order, order_template
     ):
         from django.conf import settings
         from django.core.files import File
 
-        from committees.services import upload_committee_template
+        from orders.order_template import install_order_template
 
         order = issue_order(faculty=faculty, committee=committee)
         with order.generated_file.open("rb") as handle:
             before = handle.read()
 
-        source = settings.BASE_DIR / "tests" / "fixtures" / "order_template_EXAM.docx"
+        source = settings.BASE_DIR / "tests" / "fixtures" / "order_template.docx"
         with source.open("rb") as handle:
-            upload_committee_template(
-                committee=committee,
-                uploaded_file=File(handle, name="order_template_EXAM.docx"),
-                uploaded_by=principal,
-            )
+            replacement = install_order_template(File(handle, name="order_template.docx"))
 
         order.refresh_from_db()
         with order.generated_file.open("rb") as handle:
             assert handle.read() == before
+        assert order.template_used == order_template != replacement
 
 
 class TestIssueRules:

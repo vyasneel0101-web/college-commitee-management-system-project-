@@ -46,7 +46,7 @@ from core.exceptions import (
 )
 from core.models import AcademicYear
 
-from .models import Order, OrderSequence, OrderType
+from .models import Order, OrderSequence, OrderTemplate, OrderType
 
 SPECIMEN_LINE = "SPECIMEN — DEMONSTRATION ONLY — NOT AN OFFICIAL ORDER"
 DOCUMENT_DATE_FORMAT = "%d-%m-%Y"
@@ -155,7 +155,7 @@ def _check_assignment_order(
             leads[1],
         )
 
-    template = committee.templates.filter(is_active=True).first()
+    template = OrderTemplate.objects.active()
     if template is None:
         raise TemplateMissing()
     previous_lead = current_lead(committee) if leads else None
@@ -340,7 +340,7 @@ def issue_assignment_order(
             "order_type": OrderType.ASSIGNMENT,
             "assignment_ids": [a.pk for a in created],
             "superseded_assignment_id": previous_lead.pk if previous_lead else None,
-            "template_version": template.version,
+            "template_id": template.pk,
             "demo_mode": settings.DEMO_MODE,
         },
         request=request,

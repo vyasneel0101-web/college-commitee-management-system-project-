@@ -1,5 +1,7 @@
 """
-Committee order templates: validation and versioned upload. docs/03_SECURITY.md §5.
+The order template: validation and installation. docs/03_SECURITY.md §5.
+
+One template serves every committee (the college confirmed a single format).
 """
 
 import zipfile
@@ -16,7 +18,7 @@ from audit import services as audit
 from audit.models import AuditAction
 from core.exceptions import TemplateRejected
 
-from .models import CommitteeTemplate
+from .models import OrderTemplate
 
 # Every template needs these.
 CORE_PLACEHOLDERS = frozenset(
@@ -114,27 +116,18 @@ def validate_template_file(uploaded_file):
 
 
 @transaction.atomic
-def upload_committee_template(*, committee, uploaded_file, uploaded_by):
+def install_order_template(uploaded_file):
     """
-    Validate `uploaded_file` and store it as the committee's new active template.
+    Validate `uploaded_file` and make it the template every new order uses.
 
-    Invariants: invalid files are rejected before anything is written;
-    versions increase by one per committee and are never reused; at most one
-    version is active; earlier versions are kept, because past orders were
-    rendered from them (BR-7).
+    Invariants: an invalid file is rejected before anything is written; at
+    most one template is in use; earlier ones are kept, because past orders
+    were rendered from them (BR-7). Orders already issued are unaffected.
     """
     placeholders = validate_template_file(uploaded_file)
-
-    latest = committee.templates.select_for_update().order_by("-version").first()
-    template = CommitteeTemplate(
-        committee=committee,
-        version=latest.version + 1 if latest else 1,
-        uploaded_by=uploaded_by,
-        detected_placeholders=placeholders,
-        is_active=True,
-    )
-    committee.templates.filter(is_active=True).update(is_active=False)
-    template.docx_file.save("template.docx", uploaded_file, save=False)
+    OrderTemplate.objects.filter(is_active=True).update(is_active=False)
+    template = OrderTemplate(detected_placeholders=placeholders, is_active=True)
+    template.docx_file.save("order-template.docx", uploaded_file, save=False)
     try:
         template.save()
     except Exception:
@@ -144,9 +137,8 @@ def upload_committee_template(*, committee, uploaded_file, uploaded_by):
 
     audit.log(
         action=AuditAction.TEMPLATE_UPLOADED,
-        actor=uploaded_by,
         obj=template,
-        summary=f"{committee.code} order template version {template.version} uploaded",
-        detail={"version": template.version, "placeholders": placeholders},
+        summary="Order template installed",
+        detail={"placeholders": placeholders},
     )
     return template

@@ -1,8 +1,6 @@
 from django.contrib import admin
 
-from core.admin_mixins import ViewOnlyAdminMixin
-
-from .models import Committee, CommitteeTemplate
+from .models import Committee
 
 
 @admin.register(Committee)
@@ -20,22 +18,3 @@ class CommitteeAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
-
-
-@admin.register(CommitteeTemplate)
-class CommitteeTemplateAdmin(ViewOnlyAdminMixin, admin.ModelAdmin):
-    """Uploads go through committees.services.upload_committee_template (validation chain)."""
-
-    fields = (
-        "committee",
-        "version",
-        "docx_file",
-        "is_active",
-        "uploaded_by",
-        "uploaded_at",
-        "detected_placeholders",
-    )
-    readonly_fields = fields
-    list_display = ("committee", "version", "is_active", "uploaded_by", "uploaded_at")
-    list_filter = ("is_active", "committee")
-    list_select_related = ("committee", "uploaded_by")

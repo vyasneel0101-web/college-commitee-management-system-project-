@@ -9,5 +9,4 @@ urlpatterns = [
     path("committees/new/", views.committee_create, name="create"),
     path("committees/<int:pk>/", views.committee_detail, name="detail"),
     path("committees/<int:pk>/edit/", views.committee_edit, name="edit"),
-    path("committees/<int:pk>/template/", views.committee_template_upload, name="template"),
 ]
