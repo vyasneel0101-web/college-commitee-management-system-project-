@@ -30,7 +30,7 @@
         <a class="link font-semibold" href="{% url 'committees:detail' committee.pk %}">{{ committee.name }}</a>
         <span class="text-sm text-[#556070]">{{ committee.code }}</span>
         {% if not committee.is_active %}<span class="pill pill-history mt-1">{% translate "Inactive" %}</span>{% endif %}
-        {% if not committee.allows_multiple_members %}<span class="block text-sm text-[#556070]">{% translate "Convener only" %}</span>{% endif %}
+        {% if not committee.allows_multiple_members %}<span class="block text-sm text-[#556070]">{% translate "Person in charge only, no members" %}</span>{% endif %}
       </td>
       <td data-label="{% translate 'In charge' %}">
         {% for assignment in committee.held_by %}{% if assignment.role == "PRESIDING_OFFICER" or assignment.role == "NODAL_OFFICER" %}{{ assignment.holder_name }} <span class="block text-sm text-[#556070]">{{ assignment.get_role_display }}</span>{% endif %}{% empty %}<span class="text-[#556070]">{% translate "Nobody" %}</span>{% endfor %}

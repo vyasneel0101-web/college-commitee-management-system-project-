@@ -20,7 +20,7 @@
   <a class="btn-primary" href="{% url 'orders:download' order.pk %}">{% translate "Download order (.docx)" %}</a>
   {% if user.is_principal %}
   <a class="link" href="{% url 'orders:assign' %}">{% translate "Assign another committee" %}</a>
-  <a class="link" href="{% url 'orders:register' %}">{% translate "Order register" %}</a>
+  <a class="link" href="{% url 'orders:register' %}">{% translate "Order registry" %}</a>
   {% if not order.is_cancelled and order.order_type != "CORRIGENDUM" %}
   <a class="link" href="{% url 'orders:cancel' order.pk %}">{% translate "Cancel this order" %}</a>
   {% endif %}

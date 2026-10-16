@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% load i18n %}
 
-{% block title %}{% translate "Order register" %}{% endblock %}
+{% block title %}{% translate "Order registry" %}{% endblock %}
 
 {% block content %}
 <div class="flex flex-wrap items-end justify-between gap-4">
   <div>
-    <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Order register" %}</h1>
+    <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Order registry" %}</h1>
     <p class="mt-2 max-w-2xl text-[#3A4453]">
       {% blocktranslate count counter=orders|length trimmed %}
         {{ counter }} order issued, newest first. Every order stays on record, including those whose assignments have since ended.

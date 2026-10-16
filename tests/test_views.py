@@ -641,23 +641,16 @@ class TestTemplateUpload:
         assert committee.templates.order_by("-version").first().version == 2
 
 
-class TestAuditLogScreen:
-    def test_it_shows_readable_action_names(
-        self, principal_client, faculty, committee, issue_order
-    ):
-        issue_order(faculty=faculty, committee=committee)
-        html = principal_client.get(reverse("audit:log")).content.decode()
-        body = html.split("<tbody>", 1)[1]
-        assert "Order issued" in body
-        assert "ORDER_ISSUED" not in body
+class TestAuditTrail:
+    def test_there_is_no_audit_screen(self, principal_client):
+        """Removed at the college's request; actions are still recorded."""
+        assert principal_client.get("/audit/").status_code == 404
 
-    def test_it_can_be_filtered_by_action(
-        self, principal_client, faculty, committee, issue_order
-    ):
+    def test_actions_are_still_recorded(self, faculty, committee, issue_order):
+        from audit.models import AuditLogEntry
+
         issue_order(faculty=faculty, committee=committee)
-        html = principal_client.get(reverse("audit:log"), {"action": "ORDER_ISSUED"}).content.decode()
-        body = html.split("<tbody>", 1)[1]
-        assert body.count('data-label="When"') == 1
+        assert AuditLogEntry.objects.filter(action="ORDER_ISSUED").exists()
 
 
 class TestSignIn:

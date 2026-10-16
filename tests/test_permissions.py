@@ -37,7 +37,6 @@ MATRIX = [
     ("orders:download", "order_pk", REDIRECT, 404, 200),
     ("orders:cancel", "order_pk", REDIRECT, 403, 200),
     ("orders:relinquish", "assignment_pk", REDIRECT, 403, 200),
-    ("audit:log", None, REDIRECT, 403, 200),
 ]
 
 # Reachable without signing in, by design: the landing page and the sign-in page.
