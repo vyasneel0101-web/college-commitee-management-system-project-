@@ -15,20 +15,22 @@ order lists them in; the arrows move a person up or down. Expects `formset`.
   <tbody>
     {% for row in formset %}
     <tr>
-      <td data-label="{% translate 'Sr.' %}" class="tabular-nums">{{ forloop.counter }}</td>
-      <td data-label="{% translate 'Person' %}">
+      <td data-label="{% translate 'Sr.' %}" class="tabular-nums"><div class="cell-value">{{ forloop.counter }}</div></td>
+      <td data-label="{% translate 'Person' %}"><div class="cell-value">
         <div class="person-pick">
+          <label class="sr-only" for="{{ row.person.id_for_label }}">{% translate "Person" %}</label>
           {{ row.person }}
           <button type="button" class="move-btn no-print" data-move="up" aria-label="{% translate 'Move up' %}" title="{% translate 'Move up' %}">&uarr;</button>
           <button type="button" class="move-btn no-print" data-move="down" aria-label="{% translate 'Move down' %}" title="{% translate 'Move down' %}">&darr;</button>
         </div>
         {% if row.person.errors %}<p class="error-text mt-1 text-sm">{{ row.person.errors|join:" " }}</p>{% endif %}
         {% for error in row.non_field_errors %}<p class="error-text mt-1 text-sm">{{ error }}</p>{% endfor %}
-      </td>
-      <td data-label="{% translate 'Role' %}">
+      </div></td>
+      <td data-label="{% translate 'Role' %}"><div class="cell-value">
+        <label class="sr-only" for="{{ row.role.id_for_label }}">{% translate "Role" %}</label>
         {{ row.role }}
         {% if row.role.errors %}<p class="error-text mt-1 text-sm">{{ row.role.errors|join:" " }}</p>{% endif %}
-      </td>
+      </div></td>
     </tr>
     {% endfor %}
   </tbody>
@@ -37,15 +39,16 @@ order lists them in; the arrows move a person up or down. Expects `formset`.
 
 <template id="appointment-row">
   <tr>
-    <td data-label="{% translate 'Sr.' %}" class="tabular-nums"></td>
-    <td data-label="{% translate 'Person' %}">
+    <td data-label="{% translate 'Sr.' %}" class="tabular-nums"><div class="cell-value"></div></td>
+    <td data-label="{% translate 'Person' %}"><div class="cell-value">
       <div class="person-pick">
+        <label class="sr-only" for="{{ formset.empty_form.person.id_for_label }}">{% translate "Person" %}</label>
         {{ formset.empty_form.person }}
         <button type="button" class="move-btn no-print" data-move="up" aria-label="{% translate 'Move up' %}" title="{% translate 'Move up' %}">&uarr;</button>
         <button type="button" class="move-btn no-print" data-move="down" aria-label="{% translate 'Move down' %}" title="{% translate 'Move down' %}">&darr;</button>
       </div>
-    </td>
-    <td data-label="{% translate 'Role' %}">{{ formset.empty_form.role }}</td>
+    </div></td>
+    <td data-label="{% translate 'Role' %}"><div class="cell-value"><label class="sr-only" for="{{ formset.empty_form.role.id_for_label }}">{% translate "Role" %}</label>{{ formset.empty_form.role }}</div></td>
   </tr>
 </template>
 
@@ -65,10 +68,13 @@ order lists them in; the arrows move a person up or down. Expects `formset`.
     function renumber() {
       var rows = table.querySelectorAll("tr");
       rows.forEach(function (row, index) {
-        row.querySelector("td").textContent = index + 1;
+        row.querySelector("td .cell-value").textContent = index + 1;
         row.querySelectorAll("select").forEach(function (field) {
           field.name = field.name.replace(/^form-(\d+|__prefix__)-/, "form-" + index + "-");
           field.id = field.id.replace(/^id_form-(\d+|__prefix__)-/, "id_form-" + index + "-");
+        });
+        row.querySelectorAll("label[for]").forEach(function (label) {
+          label.htmlFor = label.htmlFor.replace(/^id_form-(\d+|__prefix__)-/, "id_form-" + index + "-");
         });
         row.querySelector('[data-move="up"]').disabled = index === 0;
         row.querySelector('[data-move="down"]').disabled = index === rows.length - 1;

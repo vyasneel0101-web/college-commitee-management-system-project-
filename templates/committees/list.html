@@ -25,18 +25,18 @@
   <tbody>
     {% for committee in committees %}
     <tr>
-      <td data-label="{% translate 'Committee' %}">
+      <td data-label="{% translate 'Committee' %}"><div class="cell-value">
         <a class="link font-semibold" href="{% url 'committees:detail' committee.pk %}">{{ committee.name }}</a>
         <span class="text-sm text-[#556070]">{{ committee.code }}</span>
         {% if not committee.is_active %}<span class="pill pill-history mt-1">{% translate "Inactive" %}</span>{% endif %}
         {% if not committee.allows_multiple_members %}<span class="block text-sm text-[#556070]">{% translate "Person in charge only, no members" %}</span>{% endif %}
-      </td>
-      <td data-label="{% translate 'In charge' %}">
+      </div></td>
+      <td data-label="{% translate 'In charge' %}"><div class="cell-value">
         {% for assignment in committee.held_by %}{% if assignment.role == "PRESIDING_OFFICER" or assignment.role == "NODAL_OFFICER" %}{{ assignment.holder_name }} <span class="block text-sm text-[#556070]">{{ assignment.get_role_display }}</span>{% endif %}{% empty %}<span class="text-[#556070]">{% translate "Nobody" %}</span>{% endfor %}
-      </td>
-      <td data-label="{% translate 'Members' %}">
+      </div></td>
+      <td data-label="{% translate 'Members' %}"><div class="cell-value">
         {% for assignment in committee.held_by %}{% if assignment.role == "MEMBER" or assignment.role == "EXTERNAL_MEMBER" %}{{ assignment.holder_name }}{% if assignment.external_member %} <span class="text-[#7A5A1F]">({% translate "external" %})</span>{% endif %}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}
-      </td>
+      </div></td>
     </tr>
     {% endfor %}
   </tbody>

@@ -42,7 +42,7 @@
   </div>
 </dl>
 
-<form method="post" action="{% url 'accounts:profile' %}" class="mt-10 max-w-md" novalidate>
+<form method="post" action="{% url 'accounts:profile' %}" class="form-panel mt-10 max-w-xl" novalidate>
   {% csrf_token %}
   <h2 class="text-lg font-semibold">{% translate "Mobile number" %}</h2>
   <p class="mt-1 text-sm text-[#3A4453]">{% translate "The one detail you can change yourself. Only you and the Principal can see it." %}</p>

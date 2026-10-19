@@ -17,7 +17,7 @@
 </div>
 {% endif %}
 
-<form method="post" class="mt-8 max-w-2xl" novalidate>
+<form method="post" class="form-panel mt-8 max-w-2xl" novalidate>
   {% csrf_token %}
   <div class="flex items-start gap-3">
     {{ form.confirm }}
@@ -25,7 +25,7 @@
   </div>
   {% if form.confirm.errors %}<p class="error-text mt-1 text-sm">{{ form.confirm.errors|join:" " }}</p>{% endif %}
   <div class="mt-6 flex flex-wrap items-center gap-4">
-    <button type="submit" class="btn-primary">{% translate "Deactivate" %}</button>
+    <button type="submit" class="btn-danger">{% translate "Deactivate" %}</button>
     <a class="link" href="{% url 'accounts:faculty_detail' person.pk %}">{% translate "Leave active" %}</a>
   </div>
 </form>

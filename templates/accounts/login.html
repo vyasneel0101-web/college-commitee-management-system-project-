@@ -4,7 +4,18 @@
 {% block title %}{% translate "Sign in" %}{% endblock %}
 
 {% block content %}
-<div class="max-w-md">
+<div class="login-layout">
+<section class="login-intro" aria-labelledby="portal-intro">
+  <div class="brand-mark" aria-hidden="true">{% include "ui/icon.html" with name="college" %}</div>
+  <h2 id="portal-intro">{% translate "Clear responsibilities. Connected faculty." %}</h2>
+  <p>{% translate "A shared workspace for the committees, people and official orders of your institution." %}</p>
+  <ul class="login-points">
+    <li>{% include "ui/icon.html" with name="committee" %}{% translate "Know your committee responsibilities" %}</li>
+    <li>{% include "ui/icon.html" with name="directory" %}{% translate "Find the right person across the college" %}</li>
+    <li>{% include "ui/icon.html" with name="orders" %}{% translate "Keep every order and its history in reach" %}</li>
+  </ul>
+</section>
+<div class="login-card">
   <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Sign in" %}</h1>
   <p class="mt-2 text-[#3A4453]">{% translate "Use the email address and password issued by the Principal’s office." %}</p>
 
@@ -61,5 +72,6 @@
     })();
   </script>
   {% endif %}
+</div>
 </div>
 {% endblock %}

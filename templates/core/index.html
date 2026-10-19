@@ -4,7 +4,7 @@
 {% block title %}{% translate "Committee assignments" %}{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl">
+<div class="landing-hero max-w-3xl">
   <h1 class="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
     {% translate "Committee assignments and official orders, kept in one register" %}
   </h1>
@@ -16,7 +16,7 @@
     {% endblocktranslate %}
   </p>
   <div class="mt-8">
-    <a href="{% url 'accounts:login' %}" class="inline-block rounded bg-[#1D4E89] px-6 py-3 text-base font-semibold text-white hover:bg-[#173F6F]">{% translate "Sign in" %}</a>
+    <a href="{% url 'accounts:login' %}" class="btn-primary">{% translate "Sign in" %}{% include "ui/icon.html" with name="arrow" %}</a>
   </div>
   <p class="mt-3 text-sm text-[#556070]">
     {% translate "Use the account issued to you by the Principal’s office." %}

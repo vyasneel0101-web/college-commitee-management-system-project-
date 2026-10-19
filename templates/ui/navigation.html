@@ -1,0 +1,25 @@
+{% load i18n %}
+{% with current=request.resolver_match.view_name app=request.resolver_match.app_name %}
+<nav class="sidebar-nav" aria-label="{% translate 'Main' %}">
+  <p class="nav-caption">{% translate "Workspace" %}</p>
+  <ul>
+    <li><a href="{% url 'assignments:dashboard' %}"{% if current == "assignments:dashboard" %} aria-current="page"{% endif %}>{% include "ui/icon.html" with name="dashboard" %}{% translate "Dashboard" %}</a></li>
+    <li><a href="{% url 'assignments:directory' %}"{% if current == "assignments:directory" %} aria-current="page"{% endif %}>{% include "ui/icon.html" with name="directory" %}{% translate "Directory" %}</a></li>
+    <li><a href="{% url 'committees:list' %}"{% if app == "committees" or current == "orders:remove_members" %} aria-current="page"{% endif %}>{% include "ui/icon.html" with name="committee" %}{% translate "Committees" %}</a></li>
+  </ul>
+  {% if user.is_principal %}
+  <p class="nav-caption">{% translate "Management" %}</p>
+  <ul>
+    <li><a href="{% url 'accounts:workload' %}"{% if current == "accounts:workload" %} aria-current="page"{% endif %}>{% include "ui/icon.html" with name="workload" %}{% translate "Workload" %}</a></li>
+    <li><a href="{% url 'orders:assign' %}"{% if current == "orders:assign" %} aria-current="page"{% endif %}>{% include "ui/icon.html" with name="assign" %}{% translate "Assign committee" %}</a></li>
+    <li><a href="{% url 'orders:register' %}"{% if app == "orders" and current != "orders:assign" and current != "orders:remove_members" %} aria-current="page"{% endif %}>{% include "ui/icon.html" with name="orders" %}{% translate "Orders" %}</a></li>
+    <li><a href="{% url 'accounts:faculty_list' %}"{% if app == "accounts" and current != "accounts:profile" and current != "accounts:workload" %} aria-current="page"{% endif %}>{% include "ui/icon.html" with name="people" %}{% translate "Faculty" %}</a></li>
+  </ul>
+  {% endif %}
+  <p class="nav-caption">{% translate "Personal" %}</p>
+  <ul>
+    {% if show_notifications_link %}<li><a href="{% url 'notifications:list' %}"{% if app == "notifications" %} aria-current="page"{% endif %}>{% include "ui/icon.html" with name="bell" %}{% translate "Notifications" %}{% if unread_notifications %}<span class="nav-count">{{ unread_notifications }}</span>{% endif %}</a></li>{% endif %}
+    <li><a href="{% url 'accounts:profile' %}"{% if current == "accounts:profile" %} aria-current="page"{% endif %}>{% include "ui/icon.html" with name="profile" %}{% translate "Profile" %}</a></li>
+  </ul>
+</nav>
+{% endwith %}

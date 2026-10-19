@@ -37,7 +37,7 @@
   </div>
 </section>
 
-<form method="post" action="{% url 'orders:cancel' order.pk %}" class="mt-8 max-w-2xl" novalidate>
+<form method="post" action="{% url 'orders:cancel' order.pk %}" class="form-panel mt-8 max-w-2xl" novalidate>
   {% csrf_token %}
   <label for="id_reason" class="block font-medium">{{ form.reason.label }}</label>
   <p class="mt-1 text-sm text-[#556070]">{% translate "Printed on the corrigendum, so write it as the office would read it." %}</p>
@@ -47,7 +47,7 @@
   {% if form.reason.errors %}<p id="reason-error" class="error-text mt-1 text-sm">{{ form.reason.errors|join:" " }}</p>{% endif %}
 
   <div class="mt-6 flex flex-wrap items-center gap-4">
-    <button type="submit" class="btn-primary">{% translate "Cancel order" %}</button>
+    <button type="submit" class="btn-danger">{% translate "Cancel order" %}</button>
     <a class="link" href="{% url 'orders:detail' order.pk %}">{% translate "Keep this order" %}</a>
   </div>
 </form>

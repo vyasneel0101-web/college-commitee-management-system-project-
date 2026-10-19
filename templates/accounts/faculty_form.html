@@ -13,7 +13,7 @@
 </div>
 {% endif %}
 
-<form method="post" class="mt-6 max-w-2xl space-y-6" novalidate>
+<form method="post" class="form-panel form-grid mt-6" novalidate>
   {% csrf_token %}
   {% for field in form %}
   <div>
@@ -25,7 +25,7 @@
     {% if field.errors %}<p class="error-text mt-1 text-sm">{{ field.errors|join:" " }}</p>{% endif %}
   </div>
   {% endfor %}
-  <div class="flex flex-wrap items-center gap-4">
+  <div class="form-actions flex flex-wrap items-center gap-4">
     <button type="submit" class="btn-primary">{% translate "Save changes" %}</button>
     <a class="link" href="{% url 'accounts:faculty_list' %}">{% translate "Back to faculty" %}</a>
   </div>

@@ -1,28 +1,76 @@
 {% extends "base.html" %}
 {% load i18n %}
 
-{% block title %}{% translate "Your committees" %}{% endblock %}
+{% block title %}{% if user.is_principal %}{% translate "Dashboard" %}{% else %}{% translate "Your committees" %}{% endif %}{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-6">
+<div class="dashboard-heading">
   <div>
-    <p class="text-sm text-[#556070]">
+    <p class="welcome">
       {{ user.salutation }} {{ user.full_name }} · {{ user.get_designation_display }}{% if user.department %}, {{ user.department.name }}{% endif %}
     </p>
-    <h1 class="mt-1 text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Your committees" %}</h1>
+    <h1>{% if user.is_principal %}{% translate "Your college workspace" %}{% else %}{% translate "Your committees" %}{% endif %}</h1>
+    <p class="intro">{% if user.is_principal %}{% translate "Manage responsibilities, review faculty workload and issue committee orders." %}{% else %}{% translate "Your responsibilities, updates and orders — together in one place." %}{% endif %}</p>
   </div>
-  <p class="flex items-baseline gap-3">
-    <span class="text-6xl font-bold leading-none tabular-nums">{{ active|length }}</span>
-    <span class="text-[#3A4453]">{% blocktranslate count counter=active|length %}active committee{% plural %}active committees{% endblocktranslate %}</span>
+  <p class="personal-count">
+    <strong>{{ active|length }}</strong>
+    <span>{% if user.is_principal %}{% translate "Your active committees" %}{% else %}{% blocktranslate count counter=active|length %}active committee{% plural %}active committees{% endblocktranslate %}{% endif %}</span>
   </p>
 </div>
 
 {% if user.is_principal %}
-<div class="no-print mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 border border-[#CBD2DB] bg-white px-4 py-4">
-  <a class="btn-primary" href="{% url 'orders:assign' %}">{% translate "Assign committee" %}</a>
-  <a class="link" href="{% url 'orders:register' %}">{% translate "Order registry" %}</a>
+<div class="action-band no-print">
+  <div><h2>{% translate "Put the right people in charge" %}</h2><p>{% translate "Choose a committee and its members. Review every change before issuing the order." %}</p></div>
+  <a class="btn-primary" href="{% url 'orders:assign' %}">{% include "ui/icon.html" with name="assign" %}{% translate "Assign committee" %}</a>
 </div>
+<nav class="quick-links no-print" aria-label="{% translate 'Management shortcuts' %}">
+  <a class="quick-link" href="{% url 'orders:register' %}">{% include "ui/icon.html" with name="orders" %}<span><strong>{% translate "Order registry" %}</strong><small>{% translate "View issued orders and download documents." %}</small></span></a>
+  <a class="quick-link" href="{% url 'accounts:workload' %}">{% include "ui/icon.html" with name="workload" %}<span><strong>{% translate "Faculty workload" %}</strong><small>{% translate "See how responsibilities are distributed." %}</small></span></a>
+  <a class="quick-link" href="{% url 'accounts:faculty_list' %}">{% include "ui/icon.html" with name="people" %}<span><strong>{% translate "Faculty" %}</strong><small>{% translate "Maintain staff details and sign-in access." %}</small></span></a>
+</nav>
+{% else %}
+<nav class="quick-links no-print" aria-label="{% translate 'Workspace shortcuts' %}">
+  <a class="quick-link" href="{% url 'assignments:directory' %}">{% include "ui/icon.html" with name="directory" %}<span><strong>{% translate "Institution directory" %}</strong><small>{% translate "Find who holds each committee." %}</small></span></a>
+  <a class="quick-link" href="{% url 'committees:list' %}">{% include "ui/icon.html" with name="committee" %}<span><strong>{% translate "Committees" %}</strong><small>{% translate "Explore committees and their members." %}</small></span></a>
+  <a class="quick-link" href="{% url 'accounts:profile' %}">{% include "ui/icon.html" with name="profile" %}<span><strong>{% translate "Your profile" %}</strong><small>{% translate "Check your details and update your mobile." %}</small></span></a>
+</nav>
 {% endif %}
+
+<section class="mt-10" aria-labelledby="held-heading">
+  <h2 id="held-heading" class="text-lg font-semibold">{% translate "Held now" %}</h2>
+  {% if active %}
+  <table class="register mt-3">
+    <thead>
+      <tr>
+        <th scope="col">{% translate "Committee" %}</th>
+        <th scope="col">{% translate "Your role" %}</th>
+        <th scope="col">{% translate "Since" %}</th>
+        <th scope="col">{% translate "Order" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for assignment in active %}
+      <tr>
+        <td data-label="{% translate 'Committee' %}"><div class="cell-value">
+          <span class="font-semibold">{{ assignment.committee.name }}</span>
+          <span class="text-sm text-[#556070]">{{ assignment.committee.code }}</span>
+        </div></td>
+        <td data-label="{% translate 'Your role' %}"><div class="cell-value">{{ assignment.get_role_display }}</div></td>
+        <td data-label="{% translate 'Since' %}" class="tabular-nums"><div class="cell-value">{{ assignment.start_date|date:"j M Y" }}</div></td>
+        <td data-label="{% translate 'Order' %}" class="tabular-nums"><div class="cell-value">
+            <a class="link" href="{% url 'orders:detail' assignment.issuing_order_id %}">{{ assignment.issuing_order.order_no }}</a>
+            <a class="link mt-1 block text-sm" href="{% url 'orders:download' assignment.issuing_order_id %}">{% translate "Download .docx" %}</a>
+          </div></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="mt-3 max-w-2xl border-l-4 border-[#CBD2DB] bg-white px-4 py-3 text-[#3A4453]">
+    {% translate "You currently hold no committees. Assignments issued by the Principal will appear here." %}
+  </p>
+  {% endif %}
+</section>
 
 {% if updates %}
 <section class="mt-8" aria-labelledby="updates-heading">
@@ -41,42 +89,6 @@
   </ul>
 </section>
 {% endif %}
-
-<section class="mt-10" aria-labelledby="held-heading">
-  <h2 id="held-heading" class="text-lg font-semibold">{% translate "Held now" %}</h2>
-  {% if active %}
-  <table class="register mt-3">
-    <thead>
-      <tr>
-        <th scope="col">{% translate "Committee" %}</th>
-        <th scope="col">{% translate "Your role" %}</th>
-        <th scope="col">{% translate "Since" %}</th>
-        <th scope="col">{% translate "Order" %}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for assignment in active %}
-      <tr>
-        <td data-label="{% translate 'Committee' %}">
-          <span class="font-semibold">{{ assignment.committee.name }}</span>
-          <span class="text-sm text-[#556070]">{{ assignment.committee.code }}</span>
-        </td>
-        <td data-label="{% translate 'Your role' %}">{{ assignment.get_role_display }}</td>
-        <td data-label="{% translate 'Since' %}" class="tabular-nums">{{ assignment.start_date|date:"j M Y" }}</td>
-        <td data-label="{% translate 'Order' %}" class="tabular-nums">
-            <a class="link" href="{% url 'orders:detail' assignment.issuing_order_id %}">{{ assignment.issuing_order.order_no }}</a>
-            <a class="link mt-1 block text-sm" href="{% url 'orders:download' assignment.issuing_order_id %}">{% translate "Download .docx" %}</a>
-          </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p class="mt-3 max-w-2xl border-l-4 border-[#CBD2DB] bg-white px-4 py-3 text-[#3A4453]">
-    {% translate "You currently hold no committees. Assignments issued by the Principal will appear here." %}
-  </p>
-  {% endif %}
-</section>
 
 <section class="mt-12" aria-labelledby="past-heading">
   {% if past %}
@@ -98,24 +110,24 @@
       <tbody>
         {% for assignment in past %}
         <tr>
-          <td data-label="{% translate 'Committee' %}">
+          <td data-label="{% translate 'Committee' %}"><div class="cell-value">
             <span class="font-semibold">{{ assignment.committee.name }}</span>
             <span class="text-sm text-[#556070]">{{ assignment.committee.code }}</span>
-          </td>
-          <td data-label="{% translate 'Your role' %}">{{ assignment.get_role_display }}</td>
-          <td data-label="{% translate 'Held' %}" class="tabular-nums">
+          </div></td>
+          <td data-label="{% translate 'Your role' %}"><div class="cell-value">{{ assignment.get_role_display }}</div></td>
+          <td data-label="{% translate 'Held' %}" class="tabular-nums"><div class="cell-value">
             {{ assignment.start_date|date:"j M Y" }} – {% if assignment.end_date %}{{ assignment.end_date|date:"j M Y" }}{% else %}{% translate "not recorded" %}{% endif %}
-          </td>
-          <td data-label="{% translate 'Status' %}">
+          </div></td>
+          <td data-label="{% translate 'Status' %}"><div class="cell-value">
             {% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}
             {% if assignment.superseded_by %}
             <span class="mt-1 block text-sm text-[#556070]">{% blocktranslate with name=assignment.superseded_by.holder_name %}Handed to {{ name }}{% endblocktranslate %}</span>
             {% endif %}
-          </td>
-          <td data-label="{% translate 'Order' %}" class="tabular-nums">
+          </div></td>
+          <td data-label="{% translate 'Order' %}" class="tabular-nums"><div class="cell-value">
             <a class="link" href="{% url 'orders:detail' assignment.issuing_order_id %}">{{ assignment.issuing_order.order_no }}</a>
             <a class="link mt-1 block text-sm" href="{% url 'orders:download' assignment.issuing_order_id %}">{% translate "Download .docx" %}</a>
-          </td>
+          </div></td>
         </tr>
         {% endfor %}
       </tbody>

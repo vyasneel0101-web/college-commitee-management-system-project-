@@ -6,6 +6,7 @@
 {% block content %}
 <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Assign committee" %}</h1>
 <p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "Choose the committee, then name everyone the order appoints. You will see exactly what the order does before it is issued." %}</p>
+{% include "ui/order_steps.html" with stage="details" %}
 
 {% if form.non_field_errors or formset.non_form_errors %}
 <div class="message message-error mt-6 max-w-2xl" role="alert">
@@ -14,7 +15,7 @@
 </div>
 {% endif %}
 
-<form method="post" action="{% url 'orders:assign' %}" class="mt-6 max-w-3xl space-y-7" novalidate>
+<form method="post" action="{% url 'orders:assign' %}" class="form-panel mt-6 max-w-4xl space-y-7" novalidate>
   {% csrf_token %}
   <input type="hidden" name="step" value="preview">
 

@@ -25,7 +25,7 @@
   <p class="border-t border-[#CBD2DB] px-4 py-3 text-sm text-[#3A4453]">{% translate "Nobody takes their place. Everyone on the committee, and everyone removed, is notified." %}</p>
 </section>
 
-<form method="post" action="{% url 'orders:remove_members' committee.pk %}" class="mt-8 max-w-2xl space-y-6" novalidate>
+<form method="post" action="{% url 'orders:remove_members' committee.pk %}" class="form-panel mt-8 max-w-2xl space-y-6" novalidate>
   {% csrf_token %}
   {% for assignment in chosen %}<input type="hidden" name="id" value="{{ assignment.pk }}">{% endfor %}
   <div class="max-w-xs">
@@ -38,7 +38,7 @@
     <div class="mt-1">{{ form.remarks }}</div>
   </div>
   <div class="flex flex-wrap items-center gap-4">
-    <button type="submit" class="btn-primary">{% translate "Remove and issue order" %}</button>
+    <button type="submit" class="btn-danger">{% translate "Remove and issue order" %}</button>
     <a class="link" href="{{ back }}">{% translate "Keep them" %}</a>
   </div>
 </form>

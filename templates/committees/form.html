@@ -7,7 +7,7 @@
 <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% if committee %}{% translate "Edit committee" %}{% else %}{% translate "Add committee" %}{% endif %}</h1>
 <p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "The code appears in every order number for this committee, so choose it carefully: it cannot be changed once an order has been issued." %}</p>
 
-<form method="post" class="mt-6 max-w-2xl space-y-6" novalidate>
+<form method="post" class="form-panel mt-6 max-w-3xl space-y-6" novalidate>
   {% csrf_token %}
   {% for field in form %}
   <div{% if field.name == "allows_multiple_members" or field.name == "is_active" %} class="flex items-start gap-3"{% endif %}>
@@ -50,27 +50,27 @@
       <tbody>
         {% for assignment in held_by %}
         <tr>
-          <td data-label="" class="no-print">
+          <td data-label="" class="no-print"><div class="cell-value">
             <input type="checkbox" name="id" value="{{ assignment.pk }}" id="remove-{{ assignment.pk }}" aria-label="{% blocktranslate with name=assignment.holder_name %}Select {{ name }} to remove{% endblocktranslate %}" class="h-5 w-5">
-          </td>
-          <td data-label="{% translate 'Name' %}">
+          </div></td>
+          <td data-label="{% translate 'Name' %}"><div class="cell-value">
             <label for="remove-{{ assignment.pk }}" class="font-semibold">{{ assignment.holder_name }}</label>
             <span class="block text-sm text-[#556070]">{{ assignment.holder_detail }}</span>
-          </td>
-          <td data-label="{% translate 'Role' %}">{{ assignment.get_role_display }}</td>
-          <td data-label="{% translate 'Since' %}" class="tabular-nums">{{ assignment.start_date|date:"j M Y" }}</td>
+          </div></td>
+          <td data-label="{% translate 'Role' %}"><div class="cell-value">{{ assignment.get_role_display }}</div></td>
+          <td data-label="{% translate 'Since' %}" class="tabular-nums"><div class="cell-value">{{ assignment.start_date|date:"j M Y" }}</div></td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-    <button type="submit" class="btn-primary no-print mt-3">{% translate "Remove selected" %}</button>
+    <button type="submit" class="btn-danger no-print mt-3">{% translate "Remove selected" %}</button>
     <p class="mt-1 text-sm text-[#556070]">{% translate "Tick everyone to remove; one order removes them all. You will confirm on the next page." %}</p>
   </form>
   {% else %}
   <p class="mt-4 border-l-4 border-[#CBD2DB] bg-white px-4 py-3 text-[#3A4453]">{% translate "Nobody is on this committee yet." %}</p>
   {% endif %}
 
-  <form method="post" action="{% url 'orders:assign' %}" class="mt-8 border border-[#CBD2DB] bg-white px-4 py-4" novalidate>
+  <form method="post" action="{% url 'orders:assign' %}" class="form-panel mt-8" novalidate>
     {% csrf_token %}
     <h3 class="font-semibold">{% translate "Add members" %}</h3>
     <input type="hidden" name="committee" value="{{ committee.pk }}">

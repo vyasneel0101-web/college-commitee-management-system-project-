@@ -1,0 +1,17 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+{% block title %}{{ title }} | {% translate "CAMS administration" %}{% endblock %}
+{% block branding %}<div id="site-name"><a href="{% url 'admin:index' %}">{% translate "CAMS administration" %}</a></div>{% endblock %}
+{% block extrastyle %}{{ block.super }}
+<style>
+  /* Keep Django's admin layout, controls, theme switch and permissions intact. */
+  :root { --primary:#1D4E89; --secondary:#17324D; --accent:#FFFFFF; --header-color:#FFFFFF; --header-branding-color:#FFFFFF; --header-bg:#17324D; --link-fg:#1D4E89; --link-selected-fg:#17324D; --font-family-primary:"Segoe UI",system-ui,sans-serif; }
+  html[data-theme="dark"] { --link-fg:#9BC7F7; --link-selected-fg:#CCE3FC; }
+  @media (prefers-color-scheme:dark) { html[data-theme="auto"] { --link-fg:#9BC7F7; --link-selected-fg:#CCE3FC; } }
+  #header { padding-top:20px; padding-bottom:20px; }
+  #site-name a { font-weight:600; }
+  .module { border-radius:5px; }
+  input[type="submit"],button,.button { border-radius:5px; }
+  :focus-visible { outline:3px solid var(--link-fg); outline-offset:3px; }
+</style>
+{% endblock %}

@@ -33,21 +33,21 @@
   <tbody>
     {% for order in orders %}
     <tr>
-      <td data-label="{% translate 'Order' %}" class="tabular-nums">
+      <td data-label="{% translate 'Order' %}" class="tabular-nums"><div class="cell-value">
         <a class="link font-medium" href="{% url 'orders:detail' order.pk %}">{{ order.order_no }}</a>
         {% if order.is_cancelled %}<span class="pill pill-history mt-1">{% translate "Cancelled" %}</span>{% endif %}
-      </td>
-      <td data-label="{% translate 'Date' %}" class="tabular-nums">{{ order.order_date|date:"j M Y" }}</td>
-      <td data-label="{% translate 'Committee' %}">{{ order.committee.name }}</td>
-      <td data-label="{% translate 'Issued to' %}">
+      </div></td>
+      <td data-label="{% translate 'Date' %}" class="tabular-nums"><div class="cell-value">{{ order.order_date|date:"j M Y" }}</div></td>
+      <td data-label="{% translate 'Committee' %}"><div class="cell-value">{{ order.committee.name }}</div></td>
+      <td data-label="{% translate 'Issued to' %}"><div class="cell-value">
         {% for assignment in order.created_assignments.all %}{{ assignment.holder_name }} <span class="text-sm text-[#556070]">{{ assignment.get_role_display }}</span>{% if not forloop.last %}<br>{% endif %}{% endfor %}
-      </td>
-      <td data-label="{% translate 'Assignment now' %}">
+      </div></td>
+      <td data-label="{% translate 'Assignment now' %}"><div class="cell-value">
         {% for assignment in order.created_assignments.all %}{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}{% endfor %}
-      </td>
-      <td data-label="{% translate 'Document' %}" class="no-print">
+      </div></td>
+      <td data-label="{% translate 'Document' %}" class="no-print"><div class="cell-value">
         <a class="link" href="{% url 'orders:download' order.pk %}">{% translate "Download" %}</a>
-      </td>
+      </div></td>
     </tr>
     {% endfor %}
   </tbody>

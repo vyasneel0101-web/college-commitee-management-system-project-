@@ -1,0 +1,6 @@
+{% load i18n %}
+<ol class="step-strip no-print" aria-label="{% translate 'Order progress' %}">
+  <li{% if stage == "details" %} aria-current="step"{% endif %}><span>1</span>{% translate "Enter details" %}</li>
+  <li{% if stage == "preview" %} aria-current="step"{% endif %}><span>2</span>{% translate "Review changes" %}</li>
+  <li><span>3</span>{% translate "Issue order" %}</li>
+</ol>

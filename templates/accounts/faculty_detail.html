@@ -61,15 +61,15 @@
     <tbody>
       {% for assignment in assignments %}
       <tr>
-        <td data-label="{% translate 'Committee' %}">{{ assignment.committee.name }}</td>
-        <td data-label="{% translate 'Role' %}">{{ assignment.get_role_display }}</td>
-        <td data-label="{% translate 'Held' %}" class="tabular-nums">
+        <td data-label="{% translate 'Committee' %}"><div class="cell-value">{{ assignment.committee.name }}</div></td>
+        <td data-label="{% translate 'Role' %}"><div class="cell-value">{{ assignment.get_role_display }}</div></td>
+        <td data-label="{% translate 'Held' %}" class="tabular-nums"><div class="cell-value">
           {{ assignment.start_date|date:"j M Y" }}{% if assignment.end_date %} – {{ assignment.end_date|date:"j M Y" }}{% endif %}
-        </td>
-        <td data-label="{% translate 'Status' %}">{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}</td>
-        <td data-label="{% translate 'Order' %}" class="tabular-nums">
+        </div></td>
+        <td data-label="{% translate 'Status' %}"><div class="cell-value">{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}</div></td>
+        <td data-label="{% translate 'Order' %}" class="tabular-nums"><div class="cell-value">
           <a class="link" href="{% url 'orders:detail' assignment.issuing_order_id %}">{{ assignment.issuing_order.order_no }}</a>
-        </td>
+        </div></td>
       </tr>
       {% endfor %}
     </tbody>

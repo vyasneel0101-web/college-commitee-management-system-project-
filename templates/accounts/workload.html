@@ -8,7 +8,7 @@
 <p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "Active committees held by each member of staff, highest first." %}</p>
 
 {% if staff %}
-<table class="register mt-6">
+<table class="register workload-table mt-6">
   <thead>
     <tr>
       <th scope="col">{% translate "Faculty" %}</th>
@@ -20,15 +20,15 @@
   <tbody>
     {% for person in staff %}
     <tr>
-      <td data-label="{% translate 'Faculty' %}">
+      <td data-label="{% translate 'Faculty' %}"><div class="cell-value">
         <span class="font-semibold">{{ person.salutation }} {{ person.full_name }}</span>
         <span class="block text-sm text-[#556070]">{{ person.get_designation_display }}</span>
-      </td>
-      <td data-label="{% translate 'Department' %}">{{ person.department.name|default:"—" }}</td>
-      <td data-label="{% translate 'Committees held' %}" class="text-sm">
-        {% for assignment in person.held %}{{ assignment.committee.name }} <span class="text-[#556070]">({{ assignment.get_role_display|lower }})</span>{% if not forloop.last %}; {% endif %}{% empty %}<span class="text-[#556070]">{% translate "None" %}</span>{% endfor %}
-      </td>
-      <td data-label="{% translate 'Active' %}" class="num text-lg font-semibold">{{ person.active_count }}</td>
+      </div></td>
+      <td data-label="{% translate 'Department' %}"><div class="cell-value">{{ person.department.name|default:"—" }}</div></td>
+      <td data-label="{% translate 'Committees held' %}" class="text-sm"><div class="cell-value">
+        {% for assignment in person.held %}<span class="workload-item">{{ assignment.committee.name }} <span class="text-[#556070]">({{ assignment.get_role_display|lower }})</span></span>{% empty %}<span class="text-[#556070]">{% translate "None" %}</span>{% endfor %}
+      </div></td>
+      <td data-label="{% translate 'Active' %}" class="num text-lg font-semibold"><div class="cell-value">{{ person.active_count }}</div></td>
     </tr>
     {% endfor %}
   </tbody>

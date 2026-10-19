@@ -49,17 +49,17 @@
   <tbody>
     {% for assignment in assignments %}
     <tr>
-      <td data-label="{% translate 'Committee' %}">
+      <td data-label="{% translate 'Committee' %}"><div class="cell-value">
         <span class="font-semibold">{{ assignment.committee.name }}</span>
         <span class="text-sm text-[#556070]">{{ assignment.committee.code }}</span>
-      </td>
-      <td data-label="{% translate 'Role' %}">{{ assignment.get_role_display }}</td>
-      <td data-label="{% translate 'Held by' %}">
+      </div></td>
+      <td data-label="{% translate 'Role' %}"><div class="cell-value">{{ assignment.get_role_display }}</div></td>
+      <td data-label="{% translate 'Held by' %}"><div class="cell-value">
         {{ assignment.holder.salutation }} {{ assignment.holder_name }}
         <span class="block text-sm text-[#556070]">{{ assignment.holder_detail }}</span>
-      </td>
-      <td data-label="{% translate 'Department' %}">{% if assignment.faculty %}{{ assignment.faculty.department.name|default:"—" }}{% else %}<span class="text-[#7A5A1F]">{% translate "External" %}</span>{% endif %}</td>
-      <td data-label="{% translate 'Since' %}" class="tabular-nums">{{ assignment.start_date|date:"j M Y" }}</td>
+      </div></td>
+      <td data-label="{% translate 'Department' %}"><div class="cell-value">{% if assignment.faculty %}{{ assignment.faculty.department.name|default:"—" }}{% else %}<span class="text-[#7A5A1F]">{% translate "External" %}</span>{% endif %}</div></td>
+      <td data-label="{% translate 'Since' %}" class="tabular-nums"><div class="cell-value">{{ assignment.start_date|date:"j M Y" }}</div></td>
     </tr>
     {% endfor %}
   </tbody>
