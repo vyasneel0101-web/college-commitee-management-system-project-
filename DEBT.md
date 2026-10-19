@@ -47,3 +47,10 @@ management screens, each run inside a transaction that was rolled back.
 Debts 1, 2 and 3 — PostgreSQL, a test suite and real authentication — are
 unchanged and still gate real records. Today's work added features; it did not
 make the system safer to put staff data into.
+
+## Waiting on the college
+
+- **Orders as PDF.** Orders are still Word files. How to convert them
+  (LibreOffice on the server, Microsoft Word with docx2pdf, or an HTML-to-PDF
+  library) is waiting on the college's server staff. Whether the Word file is
+  also offered for download is undecided.
