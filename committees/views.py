@@ -8,7 +8,7 @@ from django.views.decorators.http import require_http_methods, require_safe
 
 from accounts.decorators import principal_required
 from assignments.models import Assignment, AssignmentRole
-from orders.forms import holder_choices
+from orders.forms import AppointmentFormSet
 
 from . import services
 from .forms import CommitteeForm
@@ -71,9 +71,7 @@ def committee_edit(request, pk):
             .filter(committee=committee)
             .order_by("role", "faculty__full_name", "external_member__full_name")
         ),
-        # holder_choices() starts with the empty "choose" row, then groups.
-        "person_groups": [choice for choice in holder_choices() if choice[0]],
-        "role_choices": AssignmentRole.choices,
+        "add_formset": AppointmentFormSet(),
         "today": timezone.localdate(),
     }
     return render(request, "committees/form.html", context)

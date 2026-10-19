@@ -432,19 +432,39 @@ def _store_order(order, buffer):
 
 @transaction.atomic
 def issue_relinquishment_order(
-    *, assignment, order_date, issued_by, remarks="", academic_year=None, request=None
+    *,
+    order_date,
+    issued_by,
+    assignment=None,
+    assignments=None,
+    remarks="",
+    academic_year=None,
+    request=None,
 ):
     """
-    End an assignment with no replacement, by order (BR-4).
+    Remove one or more people from a committee, with nobody replacing them,
+    in a single numbered order (BR-4).
 
-    Invariants: same atomicity and numbering rules as an assignment order.
-    The assignment row is never deleted; it becomes RELINQUISHED with this
-    order as its ending_order.
+    Invariants: all or nothing; every assignment must be ACTIVE and on the
+    same committee; rows are never deleted, each becomes RELINQUISHED with
+    this order as its ending_order; one order number for the whole removal.
     """
+    assignments = list(assignments or ([assignment] if assignment else []))
     if not issued_by.is_principal:
         raise NotPrincipal()
-    if assignment.status != AssignmentStatus.ACTIVE:
-        raise AssignmentNotActive()
+    if not assignments:
+        raise NoAppointments(_("Choose at least one person to remove."))
+    if len({a.pk for a in assignments}) != len(assignments):
+        raise DuplicateAppointment(_("The same person is listed twice."))
+    committee = assignments[0].committee
+    if any(a.committee_id != committee.pk for a in assignments):
+        raise DuplicateAppointment(_("Everyone removed in one order must be on the same committee."))
+    for a in assignments:
+        if a.status != AssignmentStatus.ACTIVE:
+            raise AssignmentNotActive(
+                _("%(name)s is no longer on %(committee)s.")
+                % {"name": a.holder_name, "committee": committee.name}
+            )
     if academic_year is None:
         academic_year = AcademicYear.objects.current()
     if order_date > timezone.localdate():
@@ -455,38 +475,59 @@ def issue_relinquishment_order(
             % {"date": order_date.strftime(DOCUMENT_DATE_FORMAT), "year": academic_year.label}
         )
 
-    holder = assignment.holder
-    committee = assignment.committee
-    role_label = str(AssignmentRole(assignment.role).label)
+    removed = [
+        {
+            "salutation": a.holder.salutation,
+            "name": a.holder_name,
+            "designation": a.holder_detail,
+            "role": str(AssignmentRole(a.role).label),
+        }
+        for a in assignments
+    ]
     order_no = next_order_no(academic_year, committee)
-    subject = "Relinquishment of {}, {} for the academic year {}.".format(
-        role_label, committee.name, academic_year.label
-    )
-    body = [
-        "{} {}, {}, is hereby relieved of the duties of {} of the {} of this institute "
-        "with effect from {}.".format(
-            holder.salutation,
-            holder.full_name,
-            assignment.holder_detail,
-            role_label,
-            committee.name,
-            order_date.strftime(DOCUMENT_DATE_FORMAT),
-        ),
+    effective = order_date.strftime(DOCUMENT_DATE_FORMAT)
+    if len(removed) == 1:
+        person = removed[0]
+        subject = "Relinquishment of {}, {} for the academic year {}.".format(
+            person["role"], committee.name, academic_year.label
+        )
+        body = [
+            "{} {}, {}, is hereby relieved of the duties of {} of the {} of this institute "
+            "with effect from {}.".format(
+                person["salutation"], person["name"], person["designation"],
+                person["role"], committee.name, effective,
+            )
+        ]
+    else:
+        subject = "Relieving members of the {} for the academic year {}.".format(
+            committee.name, academic_year.label
+        )
+        body = [
+            "The following are hereby relieved of their duties in the {} of this institute "
+            "with effect from {}:".format(committee.name, effective)
+        ]
+        body += [
+            "{}. {} {}, {} — {}".format(n, r["salutation"], r["name"], r["designation"], r["role"])
+            for n, r in enumerate(removed, start=1)
+        ]
+    body += [
         "The charge shall be handed over to this office until further orders.",
         "This is issued with the approval of the competent authority.",
     ]
     if remarks:
         body.append("Remarks: " + remarks)
 
+    first = removed[0]
     render_context = {
         "order_no": order_no,
-        "order_date": order_date.strftime(DOCUMENT_DATE_FORMAT),
-        "faculty_salutation": holder.salutation,
-        "faculty_name": holder.full_name,
-        "faculty_designation": assignment.holder_detail,
+        "order_date": effective,
+        "faculty_salutation": first["salutation"],
+        "faculty_name": first["name"],
+        "faculty_designation": first["designation"],
         "faculty_department": "",
         "committee_name": committee.name,
-        "assignment_role": role_label,
+        "assignment_role": first["role"],
+        "removed": removed,
         "academic_year": academic_year.label,
         "principal_name": issued_by.full_name,
         "principal_signature": issued_by.signature_image.name if issued_by.signature_image else "",
@@ -514,17 +555,18 @@ def issue_relinquishment_order(
         ),
         buffer,
     )
-    relinquish_assignment(assignment=assignment, order=order)
+    for a in assignments:
+        relinquish_assignment(assignment=a, order=order)
+
+    names = "; ".join(f"{r['name']} removed as {r['role']}" for r in removed)
     audit.log(
         action=AuditAction.ORDER_ISSUED,
         actor=issued_by,
         obj=order,
-        summary="{} issued: {} relinquishes {} of {}".format(
-            order_no, holder.full_name, role_label, committee.name
-        ),
+        summary=f"{order_no} issued: {names} — {committee.name}"[:255],
         detail={
             "order_type": OrderType.RELINQUISHMENT,
-            "assignment_id": assignment.pk,
+            "assignment_ids": [a.pk for a in assignments],
             "demo_mode": settings.DEMO_MODE,
         },
         request=request,
@@ -532,8 +574,8 @@ def issue_relinquishment_order(
     notify_committee(
         committee=committee,
         order=order,
-        message=f"{committee.name}: {holder.full_name} removed as {role_label}. Order {order_no}.",
-        also=[assignment.faculty] if assignment.faculty else [],
+        message=f"{committee.name}: {names}. Order {order_no}.",
+        also=[a.faculty for a in assignments if a.faculty],
     )
     return order
 

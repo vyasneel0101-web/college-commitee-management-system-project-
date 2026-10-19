@@ -80,7 +80,7 @@ class TestDirectory:
 
 class TestWorkload:
     def test_it_sorts_by_committees_held(
-        self, client, faculty, other_faculty, committee, exam_committee, issue_order
+        self, client, principal, faculty, other_faculty, committee, exam_committee, issue_order
     ):
         issue_order(faculty=faculty, committee=committee)
         issue_order(faculty=faculty, committee=exam_committee, order_date=date(2026, 7, 2))
@@ -90,20 +90,30 @@ class TestWorkload:
             role=AssignmentRole.MEMBER,
             order_date=date(2026, 7, 3),
         )
-        client.force_login(faculty)
+        client.force_login(principal)
         html = client.get(reverse("accounts:workload")).content.decode()
         assert html.index(faculty.full_name) < html.index(other_faculty.full_name)
 
     def test_it_never_shows_contact_details(
-        self, client, faculty, other_faculty, committee, issue_order
+        self, client, principal, faculty, other_faculty, committee, issue_order
     ):
         other_faculty.mobile = "+919000000001"
         other_faculty.save(update_fields=["mobile"])
         issue_order(faculty=other_faculty, committee=committee)
-        client.force_login(faculty)
+        client.force_login(principal)
         html = client.get(reverse("accounts:workload")).content.decode()
         assert "+919000000001" not in html
         assert other_faculty.email not in html
+
+
+    def test_faculty_have_no_workload_tab_or_page(self, faculty_client):
+        html = faculty_client.get(reverse("assignments:dashboard")).content.decode()
+        assert reverse("accounts:workload") not in html
+        assert faculty_client.get(reverse("accounts:workload")).status_code == 403
+
+    def test_the_principal_still_has_it(self, principal_client):
+        html = principal_client.get(reverse("assignments:dashboard")).content.decode()
+        assert reverse("accounts:workload") in html
 
 
 class TestProfile:

@@ -13,7 +13,7 @@ from .forms import DeactivateFacultyForm, FacultyForm, ProfileForm
 from .models import User
 
 
-@login_required
+@principal_required
 @require_safe
 def workload(request):
     """Every active member of staff with their active committees, busiest first."""

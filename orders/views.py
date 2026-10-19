@@ -1,10 +1,12 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
+from django.utils.translation import ngettext
 from django.views.decorators.http import require_GET, require_http_methods, require_safe
 
 from accounts.decorators import principal_required
@@ -242,3 +244,55 @@ def relinquish(request, pk):
             return redirect("orders:detail", pk=order.pk)
     context = {"assignment": assignment, "form": form, "next": request.GET.get("next", "")}
     return render(request, "orders/relinquish.html", context)
+
+
+@principal_required
+@require_http_methods(["GET", "POST"])
+def remove_members(request, committee_pk):
+    """
+    Remove the people ticked on the committee's edit page, in one order.
+    GET shows who will be removed; POST issues the order.
+    """
+    from committees.models import Committee
+
+    committee = get_object_or_404(Committee, pk=committee_pk)
+    back = reverse("committees:edit", kwargs={"pk": committee.pk})
+    ids = {int(v) for v in request.GET.getlist("id") + request.POST.getlist("id") if v.isdigit()}
+    chosen = list(
+        Assignment.objects.active()
+        .filter(committee=committee, pk__in=ids)
+        .select_related("faculty", "faculty__department", "external_member", "committee")
+        .order_by("faculty__full_name", "external_member__full_name")
+    )
+    if not chosen:
+        messages.error(request, _("Tick at least one person to remove."))
+        return redirect(back)
+
+    form = RelinquishForm(request.POST or None, initial={"order_date": timezone.localdate()})
+    if request.method == "POST" and form.is_valid():
+        try:
+            order = services.issue_relinquishment_order(
+                assignments=chosen,
+                order_date=form.cleaned_data["order_date"],
+                issued_by=request.user,
+                remarks=form.cleaned_data["remarks"],
+                request=request,
+            )
+        except DomainError as exc:
+            form.add_error(None, exc.message)
+        else:
+            messages.success(
+                request,
+                ngettext(
+                    "%(count)d person removed from %(committee)s by order %(number)s.",
+                    "%(count)d people removed from %(committee)s by order %(number)s.",
+                    len(chosen),
+                )
+                % {"count": len(chosen), "committee": committee.name, "number": order.order_no},
+            )
+            return redirect(back)
+    return render(
+        request,
+        "orders/remove_members.html",
+        {"committee": committee, "chosen": chosen, "form": form, "back": back},
+    )

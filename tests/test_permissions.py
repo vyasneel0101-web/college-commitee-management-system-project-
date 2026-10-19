@@ -18,7 +18,7 @@ MATRIX = [
     ("accounts:login", None, 200, REDIRECT, REDIRECT),
     ("accounts:logout", None, 405, 405, 405),
     ("accounts:profile", None, REDIRECT, 200, 200),
-    ("accounts:workload", None, REDIRECT, 200, 200),
+    ("accounts:workload", None, REDIRECT, 403, 200),
     ("accounts:faculty_list", None, REDIRECT, 403, 200),
     ("accounts:faculty_create", None, REDIRECT, 403, 200),
     ("accounts:faculty_detail", "faculty_pk", REDIRECT, 403, 200),
@@ -37,6 +37,8 @@ MATRIX = [
     ("orders:cancel", "order_pk", REDIRECT, 403, 200),
     ("orders:relinquish", "assignment_pk", REDIRECT, 403, 200),
     ("notifications:list", None, REDIRECT, 200, 200),
+    # Without anyone ticked, the Principal is sent back to the edit page.
+    ("orders:remove_members", "committee_id", REDIRECT, 403, REDIRECT),
 ]
 
 # Reachable without signing in, by design: the landing page and the sign-in page.
@@ -50,6 +52,7 @@ def scenario(principal, other_faculty, committee, issue_order):
     return {
         "faculty_pk": {"pk": other_faculty.pk},
         "committee_pk": {"pk": committee.pk},
+        "committee_id": {"committee_pk": committee.pk},
         "order_pk": {"pk": order.pk},
         "assignment_pk": {"pk": Assignment.objects.get().pk},
     }
