@@ -10,9 +10,9 @@
 {% if notifications %}
 <ul class="mt-6 max-w-3xl border border-[#CBD2DB] bg-white">
   {% for notification in notifications %}
-  <li class="border-b border-[#CBD2DB] px-4 py-3 last:border-b-0{% if notification.pk in unread_ids %} border-l-4 border-l-[#1D4E89]{% endif %}">
-    {% if notification.pk in unread_ids %}<span class="pill pill-active mb-1">{% translate "New" %}</span>{% endif %}
-    <p>{{ notification.message }}</p>
+  <li class="notice{% if notification.pk in unread_ids %} notice-unread{% endif %}">
+    {% if notification.pk in unread_ids %}<span class="notice-badge">{% translate "New" %}</span>{% endif %}
+    <p class="notice-text">{{ notification.message }}</p>
     <p class="mt-1 text-sm text-[#556070]">
       {{ notification.created_at|date:"j M Y, H:i" }} ·
       <a class="link" href="{% url 'committees:detail' notification.committee_id %}">{{ notification.committee.name }}</a>

@@ -357,7 +357,6 @@ def issue_assignment_order(
         order=order,
         message=f"{message} Order {order_no}.",
         also=[previous_lead.faculty] if previous_lead and previous_lead.faculty else [],
-        exclude=issued_by,
     )
     return order
 
@@ -535,7 +534,6 @@ def issue_relinquishment_order(
         order=order,
         message=f"{committee.name}: {holder.full_name} removed as {role_label}. Order {order_no}.",
         also=[assignment.faculty] if assignment.faculty else [],
-        exclude=issued_by,
     )
     return order
 
@@ -680,6 +678,5 @@ def cancel_order(*, order, reason, issued_by, order_date=None, request=None):
         order=corrigendum,
         message=message,
         also=[a.faculty for a in created if a.faculty],
-        exclude=issued_by,
     )
     return corrigendum

@@ -75,6 +75,18 @@
     .pill-active { border-color: #1B2330; color: #1B2330; font-weight: 600; }
     .pill-history { border-style: dashed; border-color: #7A5A1F; color: #7A5A1F; }
 
+    /* Unread notifications stand out until read; read ones are plain. */
+    .notice { padding: 0.75rem 1rem; border-bottom: 1px solid #CBD2DB; }
+    .notice:last-child { border-bottom: 0; }
+    .notice-unread { background: #E3EDFA; border-left: 5px solid #1D4E89; }
+    .notice-unread .notice-text { font-weight: 600; color: #10294A; }
+    .notice-badge {
+      display: inline-block; background: #1D4E89; color: #fff; font-size: 0.75rem;
+      font-weight: 700; border-radius: 999px; padding: 0 0.5rem; line-height: 1.25rem;
+      margin-bottom: 0.25rem;
+    }
+    @media print { .notice-unread { background: #fff; } }
+
     @media (max-width: 767px) {
       .register.stack-early thead {
         position: absolute; width: 1px; height: 1px; overflow: hidden;
@@ -164,7 +176,7 @@
       </a>
       {% if user.is_authenticated %}
         <div class="no-print flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#556070]">
-          <a class="link font-medium" href="{% url 'notifications:list' %}">{% translate "Notifications" %}{% if unread_notifications %} <span class="ml-1 inline-block rounded-full bg-[#1D4E89] px-2 text-xs font-semibold leading-5 text-white tabular-nums" aria-label="{% blocktranslate count counter=unread_notifications %}{{ counter }} unread{% plural %}{{ counter }} unread{% endblocktranslate %}">{{ unread_notifications }}</span>{% endif %}</a>
+          {% if show_notifications_link %}<a class="link font-medium" href="{% url 'notifications:list' %}">{% translate "Notifications" %}{% if unread_notifications %} <span class="ml-1 inline-block rounded-full bg-[#1D4E89] px-2 text-xs font-semibold leading-5 text-white tabular-nums" aria-label="{% blocktranslate count counter=unread_notifications %}{{ counter }} unread{% plural %}{{ counter }} unread{% endblocktranslate %}">{{ unread_notifications }}</span>{% endif %}</a>{% endif %}
           <span>{{ user.full_name|default:user.email }}{% if user.is_principal %} · {% translate "Principal" %}{% endif %}</span>
           <form method="post" action="{% url 'accounts:logout' %}">
             {% csrf_token %}

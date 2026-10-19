@@ -14,7 +14,8 @@ def dashboard(request):
         "committee", "issuing_order", "superseded_by__faculty"
     )
     context = {
-        "updates": list(request.user.notifications.select_related("committee")[:5]),
+        # Only unread: once read they live in the Notifications tab alone.
+        "updates": list(request.user.notifications.unread().select_related("committee")[:5]),
         "active": list(mine.active().order_by("committee__name")),
         "past": list(
             mine.exclude(status=AssignmentStatus.ACTIVE).order_by("-end_date", "-start_date")

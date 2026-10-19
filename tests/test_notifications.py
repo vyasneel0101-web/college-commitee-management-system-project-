@@ -81,11 +81,29 @@ def test_other_committees_are_not_disturbed(
     assert all(exam_committee.name not in m for m in inbox(faculty))
 
 
-def test_the_principal_is_not_notified_of_their_own_action(
+def test_the_principal_is_not_notified_about_committees_he_is_not_on(
     principal, faculty, committee, issue_order
 ):
     issue_order(faculty=faculty, committee=committee, role=MEMBER)
     assert inbox(principal) == []
+
+
+def test_the_principal_is_notified_about_a_committee_he_is_on(
+    principal, faculty, committee, issue_order
+):
+    issue_order(faculty=principal, committee=committee, role=LEAD)
+    issue_order(faculty=faculty, committee=committee, role=MEMBER, order_date=date(2026, 7, 2))
+    assert any(f"{faculty.full_name} appointed Member" in m for m in inbox(principal))
+
+
+def test_the_principal_has_no_notifications_link_until_he_has_some(
+    principal_client, principal, faculty, committee, issue_order
+):
+    html = principal_client.get(reverse("assignments:dashboard")).content.decode()
+    assert reverse("notifications:list") not in html
+    issue_order(faculty=principal, committee=committee, role=LEAD)
+    html = principal_client.get(reverse("assignments:dashboard")).content.decode()
+    assert reverse("notifications:list") in html
 
 
 def test_an_external_member_does_not_break_notifying(
@@ -111,20 +129,36 @@ def test_the_header_shows_the_unread_count(faculty_client, faculty, committee, i
     assert 'aria-label="1 unread"' in html
 
 
-def test_the_dashboard_lists_recent_updates(faculty_client, faculty, committee, issue_order):
+def test_the_dashboard_shows_unread_notifications_highlighted(
+    faculty_client, faculty, committee, issue_order
+):
     issue_order(faculty=faculty, committee=committee, role=MEMBER)
     html = faculty_client.get(reverse("assignments:dashboard")).content.decode()
-    assert "Recent updates" in html
+    assert "New notifications" in html
+    assert 'class="notice notice-unread"' in html
     assert f"{faculty.full_name} appointed Member" in html
+
+
+def test_read_notifications_leave_the_dashboard_but_stay_in_the_tab(
+    faculty_client, faculty, committee, issue_order
+):
+    issue_order(faculty=faculty, committee=committee, role=MEMBER)
+    faculty_client.get(reverse("notifications:list"))  # reading them
+    dashboard = faculty_client.get(reverse("assignments:dashboard")).content.decode()
+    assert "New notifications" not in dashboard
+    assert f"{faculty.full_name} appointed Member" not in dashboard
+    tab = faculty_client.get(reverse("notifications:list")).content.decode()
+    assert f"{faculty.full_name} appointed Member" in tab
+    assert 'class="notice notice-unread"' not in tab, "read ones are plain"
 
 
 def test_opening_the_list_marks_everything_read(faculty_client, faculty, committee, issue_order):
     issue_order(faculty=faculty, committee=committee, role=MEMBER)
     first = faculty_client.get(reverse("notifications:list")).content.decode()
-    assert ">New<" in first, "still highlighted on the visit that reads them"
+    assert 'class="notice notice-unread"' in first, "still highlighted on the visit that reads them"
     assert Notification.objects.unread().count() == 0
     html = faculty_client.get(reverse("assignments:dashboard")).content.decode()
-    assert "unread" not in html
+    assert 'aria-label="1 unread"' not in html
 
 
 def test_you_only_see_your_own(
