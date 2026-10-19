@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Your profile" %}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Your profile" %}</h1>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "These details appear on the orders issued to you. They are maintained by the Principal’s office; ask the office to correct anything that is wrong." %}</p>
+
+<dl class="mt-6 max-w-3xl border border-[#CBD2DB] bg-white">
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Name" %}</dt>
+    <dd class="font-semibold">{{ user.salutation }} {{ user.full_name }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Email address" %}</dt>
+    <dd class="break-all">{{ user.email }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Designation" %}</dt>
+    <dd>{{ user.get_designation_display|default:"—" }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Government class" %}</dt>
+    <dd>{{ user.get_govt_class_display|default:"—" }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Department" %}</dt>
+    <dd>{{ user.department.name|default:"—" }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Employee code" %}</dt>
+    <dd>{{ user.employee_code|default:_("Not recorded") }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Joining date" %}</dt>
+    <dd class="tabular-nums">{% if user.joining_date %}{{ user.joining_date|date:"j M Y" }}{% else %}{% translate "Not recorded" %}{% endif %}</dd>
+  </div>
+  <div class="px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Access" %}</dt>
+    <dd>{{ user.get_role_display }}</dd>
+  </div>
+</dl>
+
+<form method="post" action="{% url 'accounts:profile' %}" class="mt-10 max-w-md" novalidate>
+  {% csrf_token %}
+  <h2 class="text-lg font-semibold">{% translate "Mobile number" %}</h2>
+  <p class="mt-1 text-sm text-[#3A4453]">{% translate "The one detail you can change yourself. Only you and the Principal can see it." %}</p>
+  <div class="mt-4">
+    <label for="id_mobile" class="block font-medium">{% translate "Mobile number" %}</label>
+    <input id="id_mobile" name="mobile" type="tel" class="field mt-1" inputmode="tel" autocomplete="tel" maxlength="15"
+           value="{{ form.mobile.value|default_if_none:'' }}"
+           aria-describedby="mobile-help{% if form.mobile.errors %} mobile-error{% endif %}"
+           {% if form.mobile.errors %}aria-invalid="true"{% endif %}>
+    <p id="mobile-help" class="mt-1 text-sm text-[#556070]">{% translate "10 digits, optionally starting with +91. Leave empty to remove it." %}</p>
+    {% if form.mobile.errors %}<p id="mobile-error" class="error-text mt-1 text-sm">{{ form.mobile.errors|join:" " }}</p>{% endif %}
+  </div>
+  <button type="submit" class="btn-primary mt-5">{% translate "Save changes" %}</button>
+</form>
+{% endblock %}

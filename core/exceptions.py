@@ -1,0 +1,102 @@
+from django.utils.translation import gettext_lazy as _
+
+
+class DomainError(Exception):
+    """
+    A business rule was violated. The message is written for the person using
+    the system and may be shown to them as-is.
+    """
+
+    default_message = _("This action is not allowed.")
+
+    def __init__(self, message=None):
+        self.message = message or self.default_message
+        super().__init__(self.message)
+
+    def __str__(self):
+        return str(self.message)
+
+
+class RecordImmutable(DomainError):
+    default_message = _("Official records cannot be changed or deleted.")
+
+
+class NoCurrentAcademicYear(DomainError):
+    default_message = _(
+        "No academic year is marked as current. Mark one as current before issuing orders."
+    )
+
+
+class NotPrincipal(DomainError):
+    default_message = _("Only the Principal can issue orders.")
+
+
+class AssignmentConflict(DomainError):
+    default_message = _("This faculty member already holds this role in this committee.")
+
+
+class CommitteeInactive(DomainError):
+    default_message = _("This committee is inactive and cannot receive new assignments.")
+
+
+class FacultyInactive(DomainError):
+    default_message = _("This faculty member is inactive and cannot be assigned.")
+
+
+class RoleNotAllowed(DomainError):
+    default_message = _("This committee takes one person in charge and no members.")
+
+
+class OrderDateInvalid(DomainError):
+    default_message = _("The order date is not valid.")
+
+
+class PreviewOutdated(DomainError):
+    default_message = _(
+        "The committee changed after you previewed this order, so it was not issued. "
+        "Preview it again and check who will be superseded."
+    )
+
+
+class NoAppointments(DomainError):
+    default_message = _("Name at least one person on the order.")
+
+
+class DuplicateAppointment(DomainError):
+    default_message = _("The same person is named twice on this order.")
+
+
+class AssignmentNotActive(DomainError):
+    default_message = _("This assignment has already ended, so it cannot be ended again.")
+
+
+class OrderAlreadyCancelled(DomainError):
+    default_message = _("This order has already been cancelled.")
+
+
+class OrderNotCancellable(DomainError):
+    default_message = _(
+        "A corrigendum cannot itself be cancelled. Issue a fresh order instead."
+    )
+
+
+class CancellationReasonRequired(DomainError):
+    default_message = _("A cancellation must state its reason. It is printed on the corrigendum.")
+
+
+class RestoreBlocked(DomainError):
+    default_message = _(
+        "A later order has already filled this role, so the earlier holder cannot be restored. "
+        "Cancel the later order first."
+    )
+
+
+class TemplateMissing(DomainError):
+    default_message = _(
+        "No order template is installed, so orders cannot be produced. "
+        "Ask the system administrator to run load_order_template."
+    )
+
+
+class TemplateRejected(DomainError):
+    default_message = _("The template was rejected.")

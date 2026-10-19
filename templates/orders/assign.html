@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Assign committee" %}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Assign committee" %}</h1>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "Choose the committee, then name everyone the order appoints. You will see exactly what the order does before it is issued." %}</p>
+
+{% if form.non_field_errors or formset.non_form_errors %}
+<div class="message message-error mt-6 max-w-2xl" role="alert">
+  {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+  {% for error in formset.non_form_errors %}<p>{{ error }}</p>{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" action="{% url 'orders:assign' %}" class="mt-6 max-w-3xl space-y-7" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="step" value="preview">
+
+  <div class="max-w-xl">
+    <label for="{{ form.committee.id_for_label }}" class="block font-medium">{{ form.committee.label }}</label>
+    <div class="mt-1">{{ form.committee }}</div>
+    {% if form.committee.errors %}<p class="error-text mt-1 text-sm">{{ form.committee.errors|join:" " }}</p>{% endif %}
+  </div>
+
+  <fieldset>
+    <legend class="font-medium">{% translate "People this order appoints" %}</legend>
+    <p class="mt-1 text-sm text-[#556070]">{% translate "A committee has one Presiding Officer or one Nodal Officer, and any number of Members. Naming a new one supersedes the current one." %}</p>
+    {% include "orders/_appointment_rows.html" %}
+    <p class="mt-1 text-sm text-[#556070]">{% translate "Use the arrows to set the sequence the order lists people in. Leave spare rows empty. Somebody from outside the college can only be appointed as External Member." %}</p>
+  </fieldset>
+
+  <div class="max-w-xs">
+    <label for="{{ form.order_date.id_for_label }}" class="block font-medium">{{ form.order_date.label }}</label>
+    <div class="mt-1">{{ form.order_date }}</div>
+    <p class="mt-1 text-sm text-[#556070]">{% translate "Today by default. An order cannot be dated in the future." %}</p>
+    {% if form.order_date.errors %}<p class="error-text mt-1 text-sm">{{ form.order_date.errors|join:" " }}</p>{% endif %}
+  </div>
+
+  <div class="max-w-xl">
+    <label for="{{ form.references.id_for_label }}" class="block font-medium">{{ form.references.label }} <span class="font-normal text-[#556070]">{% translate "(optional)" %}</span></label>
+    <div class="mt-1">{{ form.references }}</div>
+    <p class="mt-1 text-sm text-[#556070]">{% translate "The circular, Act or notification this order acts under, printed above the body." %}</p>
+    {% if form.references.errors %}<p class="error-text mt-1 text-sm">{{ form.references.errors|join:" " }}</p>{% endif %}
+  </div>
+
+  <div class="max-w-xl">
+    <label for="{{ form.remarks.id_for_label }}" class="block font-medium">{{ form.remarks.label }} <span class="font-normal text-[#556070]">{% translate "(optional)" %}</span></label>
+    <div class="mt-1">{{ form.remarks }}</div>
+    {% if form.remarks.errors %}<p class="error-text mt-1 text-sm">{{ form.remarks.errors|join:" " }}</p>{% endif %}
+  </div>
+
+  <button type="submit" class="btn-primary">{% translate "Preview order" %}</button>
+</form>
+
+{% endblock %}

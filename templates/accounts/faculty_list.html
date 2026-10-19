@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Faculty" %}{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Faculty" %}</h1>
+    <p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "Every staff record, including those who have left. Records are never deleted, so their orders stay readable." %}</p>
+  </div>
+  <a class="btn-primary no-print" href="{% url 'accounts:faculty_create' %}">{% translate "Add faculty" %}</a>
+</div>
+
+<table class="register mt-6">
+  <thead>
+    <tr>
+      <th scope="col">{% translate "Name" %}</th>
+      <th scope="col">{% translate "Department" %}</th>
+      <th scope="col">{% translate "Email" %}</th>
+      <th scope="col" class="num">{% translate "Committees" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for person in people %}
+    <tr>
+      <td data-label="{% translate 'Name' %}">
+        <a class="link font-semibold" href="{% url 'accounts:faculty_detail' person.pk %}">{{ person.salutation }} {{ person.full_name }}</a>
+        <span class="block text-sm text-[#556070]">{{ person.get_designation_display }}</span>
+        {% if not person.is_active %}<span class="pill pill-history mt-1">{% translate "Deactivated" %}</span>{% endif %}
+      </td>
+      <td data-label="{% translate 'Department' %}">{{ person.department.name|default:"—" }}</td>
+      <td data-label="{% translate 'Email' %}" class="break-all text-sm">{{ person.email }}</td>
+      <td data-label="{% translate 'Committees' %}" class="num font-semibold">{{ person.active_count }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

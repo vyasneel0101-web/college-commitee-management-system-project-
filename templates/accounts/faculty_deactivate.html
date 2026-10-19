@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Deactivate faculty" %}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% blocktranslate with name=person.full_name %}Deactivate {{ name }}{% endblocktranslate %}</h1>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "They will no longer be able to sign in. Their record, their committee history and every order naming them stay exactly as they are." %}</p>
+
+{% if active %}
+<div class="mt-6 max-w-2xl border-l-4 border-[#7A5A1F] bg-white px-4 py-3">
+  <p class="font-semibold">{% blocktranslate count counter=active|length %}This person still holds {{ counter }} committee.{% plural %}This person still holds {{ counter }} committees.{% endblocktranslate %}</p>
+  <ul class="mt-2 list-disc pl-5">
+    {% for assignment in active %}<li>{{ assignment.committee.name }} — {{ assignment.get_role_display }}</li>{% endfor %}
+  </ul>
+  <p class="mt-2 text-[#3A4453]">{% translate "Deactivating does not end these. Issue a relinquishment order, or assign each committee to someone else, so the register stays truthful." %}</p>
+</div>
+{% endif %}
+
+<form method="post" class="mt-8 max-w-2xl" novalidate>
+  {% csrf_token %}
+  <div class="flex items-start gap-3">
+    {{ form.confirm }}
+    <label for="{{ form.confirm.id_for_label }}" class="font-medium">{{ form.confirm.label }}</label>
+  </div>
+  {% if form.confirm.errors %}<p class="error-text mt-1 text-sm">{{ form.confirm.errors|join:" " }}</p>{% endif %}
+  <div class="mt-6 flex flex-wrap items-center gap-4">
+    <button type="submit" class="btn-primary">{% translate "Deactivate" %}</button>
+    <a class="link" href="{% url 'accounts:faculty_detail' person.pk %}">{% translate "Leave active" %}</a>
+  </div>
+</form>
+{% endblock %}

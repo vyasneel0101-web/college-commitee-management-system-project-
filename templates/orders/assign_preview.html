@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Check the order" %}{% endblock %}
+
+{% block content %}
+{% with committee=form.cleaned_data.committee holder=preview.previous_holder %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% translate "Check the order before issuing it" %}</h1>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "Nothing has been saved yet. Issuing creates the numbered order, stores the Word document and updates the assignments, all at once." %}</p>
+
+<section class="mt-8 max-w-3xl border border-[#CBD2DB] bg-white" aria-labelledby="effect-heading">
+  <h2 id="effect-heading" class="border-b border-[#CBD2DB] px-4 py-3 text-lg font-semibold">{% translate "What this order will do" %}</h2>
+  <div class="space-y-3 px-4 py-4">
+    <p>
+      {% blocktranslate count counter=appointments|length with committee=committee.name trimmed %}
+        One person is appointed to <strong>{{ committee }}</strong>:
+      {% plural %}
+        {{ counter }} people are appointed to <strong>{{ committee }}</strong>:
+      {% endblocktranslate %}
+    </p>
+    <ul class="list-disc pl-5">
+      {% for appointment in appointments %}
+      <li>
+        <strong>{{ appointment.holder.full_name }}</strong> — {{ appointment.role }}
+        <span class="text-[#556070]">· {{ appointment.detail }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% if holder %}
+    <p class="border-l-4 border-[#7A5A1F] pl-3">
+      {% blocktranslate trimmed with name=holder.holder_name role=holder.get_role_display since=holder.start_date|date:"j M Y" %}
+        This will supersede <strong>{{ name }}</strong>, {{ role }} since {{ since }}. Their assignment
+        ends on the order date and moves to their past committees. Their earlier order stays on record.
+      {% endblocktranslate %}
+    </p>
+    {% else %}
+    <p>{% translate "Nobody is superseded by this order." %}</p>
+    {% endif %}
+  </div>
+</section>
+
+<dl class="mt-6 max-w-3xl border border-[#CBD2DB] bg-white">
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Order number" %}</dt>
+    <dd><span class="font-semibold tabular-nums">{{ preview.expected_order_no }}</span> <span class="text-sm text-[#556070]">{% translate "expected; confirmed when issued" %}</span></dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Order date" %}</dt>
+    <dd class="tabular-nums">{{ form.cleaned_data.order_date|date:"j M Y" }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Academic year" %}</dt>
+    <dd>{{ preview.academic_year.label }}</dd>
+  </div>
+  <div class="border-b border-[#CBD2DB] px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "References" %}</dt>
+    <dd>{{ form.cleaned_data.references|default:"—"|linebreaksbr }}</dd>
+  </div>
+  <div class="px-4 py-3 sm:grid sm:grid-cols-[12rem_1fr] sm:gap-6">
+    <dt class="text-sm text-[#556070]">{% translate "Remarks" %}</dt>
+    <dd>{{ form.cleaned_data.remarks|default:"—" }}</dd>
+  </div>
+</dl>
+
+{% if demo_mode %}
+<p class="mt-4 max-w-3xl text-sm text-[#3A4453]">{% translate "Demonstration system: the document will carry the line “SPECIMEN — DEMONSTRATION ONLY — NOT AN OFFICIAL ORDER”, and the signature is a stored image, not a digital signature." %}</p>
+{% endif %}
+
+<div class="mt-8 flex flex-wrap items-center gap-4">
+  <form method="post" action="{% url 'orders:assign' %}" id="issue-form" onsubmit="this.querySelector('button[type=submit]').disabled = true;">
+    {% csrf_token %}
+    {% for field in form %}{{ field.as_hidden }}{% endfor %}
+    {{ formset.management_form }}
+    {% for row in formset %}{% for field in row %}{{ field.as_hidden }}{% endfor %}{% endfor %}
+    <input type="hidden" name="expected_superseded" value="{% if holder %}{{ holder.pk }}{% else %}none{% endif %}">
+    <input type="hidden" name="step" value="issue">
+    <button type="submit" class="btn-primary">{% translate "Issue order" %}</button>
+  </form>
+  <form method="post" action="{% url 'orders:assign' %}">
+    {% csrf_token %}
+    {% for field in form %}{{ field.as_hidden }}{% endfor %}
+    {{ formset.management_form }}
+    {% for row in formset %}{% for field in row %}{{ field.as_hidden }}{% endfor %}{% endfor %}
+    <input type="hidden" name="step" value="edit">
+    <button type="submit" class="link">{% translate "Change details" %}</button>
+  </form>
+</div>
+{% endwith %}
+{% endblock %}

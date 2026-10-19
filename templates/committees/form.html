@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% if committee %}{% translate "Edit committee" %}{% else %}{% translate "Add committee" %}{% endif %}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{% if committee %}{% translate "Edit committee" %}{% else %}{% translate "Add committee" %}{% endif %}</h1>
+<p class="mt-2 max-w-2xl text-[#3A4453]">{% translate "The code appears in every order number for this committee, so choose it carefully: it cannot be changed once an order has been issued." %}</p>
+
+<form method="post" class="mt-6 max-w-2xl space-y-6" novalidate>
+  {% csrf_token %}
+  {% for field in form %}
+  <div{% if field.name == "allows_multiple_members" or field.name == "is_active" %} class="flex items-start gap-3"{% endif %}>
+    {% if field.name == "allows_multiple_members" or field.name == "is_active" %}
+      {{ field }}
+      <div>
+        <label for="{{ field.id_for_label }}" class="font-medium">{{ field.label }}</label>
+        {% if field.help_text %}<p class="text-sm text-[#556070]">{{ field.help_text }}</p>{% endif %}
+      </div>
+    {% else %}
+      <label for="{{ field.id_for_label }}" class="block font-medium">{{ field.label }}</label>
+      <div class="mt-1">{{ field }}</div>
+      {% if field.help_text %}<p class="mt-1 text-sm text-[#556070]">{{ field.help_text }}</p>{% endif %}
+    {% endif %}
+    {% if field.errors %}<p class="error-text mt-1 text-sm">{{ field.errors|join:" " }}</p>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="flex flex-wrap items-center gap-4">
+    <button type="submit" class="btn-primary">{% translate "Save changes" %}</button>
+    <a class="link" href="{% url 'committees:list' %}">{% translate "Back to committees" %}</a>
+  </div>
+</form>
+
+{% if committee %}
+<section class="mt-12 max-w-3xl" aria-labelledby="members-heading">
+  <h2 id="members-heading" class="text-xl font-semibold">{% translate "Members" %}</h2>
+  <p class="mt-1 text-sm text-[#3A4453]">{% translate "Every change here is made by a numbered order, and everyone on the committee is notified." %}</p>
+
+  {% if held_by %}
+  <form method="get" action="{% url 'orders:remove_members' committee.pk %}" class="mt-4">
+    <table class="register">
+      <thead>
+        <tr>
+          <th scope="col" class="no-print w-12"><span class="sr-only">{% translate "Select" %}</span></th>
+          <th scope="col">{% translate "Name" %}</th>
+          <th scope="col">{% translate "Role" %}</th>
+          <th scope="col">{% translate "Since" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for assignment in held_by %}
+        <tr>
+          <td data-label="" class="no-print">
+            <input type="checkbox" name="id" value="{{ assignment.pk }}" id="remove-{{ assignment.pk }}" aria-label="{% blocktranslate with name=assignment.holder_name %}Select {{ name }} to remove{% endblocktranslate %}" class="h-5 w-5">
+          </td>
+          <td data-label="{% translate 'Name' %}">
+            <label for="remove-{{ assignment.pk }}" class="font-semibold">{{ assignment.holder_name }}</label>
+            <span class="block text-sm text-[#556070]">{{ assignment.holder_detail }}</span>
+          </td>
+          <td data-label="{% translate 'Role' %}">{{ assignment.get_role_display }}</td>
+          <td data-label="{% translate 'Since' %}" class="tabular-nums">{{ assignment.start_date|date:"j M Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit" class="btn-primary no-print mt-3">{% translate "Remove selected" %}</button>
+    <p class="mt-1 text-sm text-[#556070]">{% translate "Tick everyone to remove; one order removes them all. You will confirm on the next page." %}</p>
+  </form>
+  {% else %}
+  <p class="mt-4 border-l-4 border-[#CBD2DB] bg-white px-4 py-3 text-[#3A4453]">{% translate "Nobody is on this committee yet." %}</p>
+  {% endif %}
+
+  <form method="post" action="{% url 'orders:assign' %}" class="mt-8 border border-[#CBD2DB] bg-white px-4 py-4" novalidate>
+    {% csrf_token %}
+    <h3 class="font-semibold">{% translate "Add members" %}</h3>
+    <input type="hidden" name="committee" value="{{ committee.pk }}">
+    <input type="hidden" name="order_date" value="{{ today|date:'Y-m-d' }}">
+    <input type="hidden" name="references" value="">
+    <input type="hidden" name="remarks" value="">
+    <input type="hidden" name="step" value="preview">
+    {% include "orders/_appointment_rows.html" with formset=add_formset %}
+    <div class="mt-4">
+      <button type="submit" class="btn-primary">{% translate "Preview order" %}</button>
+    </div>
+    <p class="mt-2 text-sm text-[#556070]">{% translate "Use the arrows to set the sequence the order lists people in. Leave spare rows empty. One order appoints everyone you name, and you will see exactly what it does before anything is saved." %}</p>
+  </form>
+
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,266 @@
+{% load i18n %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% translate "Committee assignments" %}{% endblock %} · {{ institution_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Gujarati:wght@400;600&display=swap">
+  {# Tailwind from the CDN during the demo sprint only: debt item 9. #}
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /*
+      Palette (docs/06_UI_DIRECTION.md). Arbitrary values because the CDN
+      build has no theme config.
+        ink     #1B2330  body text
+        muted   #556070  secondary text
+        rule    #CBD2DB  rules and borders
+        ground  #F5F6F8  page background
+        action  #1D4E89  actions only, never decoration
+        history #7A5A1F  superseded / past states, always with a text label
+        error   #A3261B  validation and sign-in errors
+    */
+    body {
+      font-family: "IBM Plex Sans", "IBM Plex Sans Gujarati", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    :focus-visible {
+      outline: 3px solid #1D4E89;
+      outline-offset: 2px;
+    }
+
+    .link { color: #1D4E89; text-decoration: underline; text-underline-offset: 3px; }
+    .link:hover { text-decoration-thickness: 2px; }
+
+    .btn-primary {
+      display: inline-block; border-radius: 0.25rem; background: #1D4E89; color: #fff;
+      font-weight: 600; padding: 0.625rem 1.25rem; line-height: 1.5rem;
+    }
+    .btn-primary:hover { background: #173F6F; }
+
+    .field {
+      display: block; width: 100%; border: 1px solid #6B7584; border-radius: 0.25rem;
+      background: #fff; padding: 0.5rem 0.75rem; font-size: 1rem; line-height: 1.5rem;
+      /* A <select> will not shrink below its longest option without this, so in a
+         narrow table column its label gets clipped to "Pres…". */
+      min-width: 0; max-width: 100%;
+    }
+    .field[aria-invalid="true"] { border-color: #A3261B; }
+
+    /* A person picker with up/down buttons that set the order's sequence. */
+    .person-pick { display: flex; gap: 0.375rem; align-items: stretch; }
+    .person-pick > select { flex: 1 1 auto; }
+    .move-btn {
+      flex: 0 0 auto; width: 2.5rem; border: 1px solid #6B7584; border-radius: 0.25rem;
+      background: #fff; color: #1B2330; font-size: 1.125rem; line-height: 1;
+    }
+    .move-btn:hover:not(:disabled) { background: #EEF1F5; }
+    .move-btn:disabled { color: #A8B0BB; border-color: #CBD2DB; cursor: default; }
+    #appointments td:last-child select { min-width: 10rem; }
+    .error-text { color: #A3261B; }
+
+    .nav-link {
+      display: inline-block; padding: 0.625rem 0; color: #3A4453;
+      border-bottom: 3px solid transparent;
+    }
+    .nav-link:hover { color: #1B2330; }
+    .nav-link[aria-current="page"] { color: #1B2330; font-weight: 600; border-bottom-color: #1B2330; }
+
+    .message { border-left: 4px solid #1B2330; background: #fff; padding: 0.75rem 1rem; }
+    .message-error { border-left-color: #A3261B; color: #A3261B; }
+
+    /* Registers: ruled tables, sticky headers, stacked rows on narrow screens. */
+    .register { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #CBD2DB; }
+    .register th {
+      position: sticky; top: var(--sticky-top, 0px); z-index: 10; background: #EEF1F4;
+      text-align: left; font-size: 0.8125rem; font-weight: 600; color: #3A4453;
+      padding: 0.625rem 0.75rem; border-bottom: 1px solid #CBD2DB;
+    }
+    .register td { padding: 0.75rem; border-bottom: 1px solid #CBD2DB; vertical-align: top; }
+    .register .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    .pill {
+      display: inline-block; border: 1px solid; border-radius: 999px; padding: 0 0.5rem;
+      font-size: 0.8125rem; line-height: 1.375rem; white-space: nowrap;
+    }
+    .pill-active { border-color: #1B2330; color: #1B2330; font-weight: 600; }
+    .pill-history { border-style: dashed; border-color: #7A5A1F; color: #7A5A1F; }
+
+    /* Unread notifications stand out until read; read ones are plain. */
+    .notice { padding: 0.75rem 1rem; border-bottom: 1px solid #CBD2DB; }
+    .notice:last-child { border-bottom: 0; }
+    .notice-unread { background: #E3EDFA; border-left: 5px solid #1D4E89; }
+    .notice-unread .notice-text { font-weight: 600; color: #10294A; }
+    .notice-badge {
+      display: inline-block; background: #1D4E89; color: #fff; font-size: 0.75rem;
+      font-weight: 700; border-radius: 999px; padding: 0 0.5rem; line-height: 1.25rem;
+      margin-bottom: 0.25rem;
+    }
+    @media print { .notice-unread { background: #fff; } }
+
+    @media (max-width: 767px) {
+      .register.stack-early thead {
+        position: absolute; width: 1px; height: 1px; overflow: hidden;
+        clip: rect(0 0 0 0); white-space: nowrap;
+      }
+      .register.stack-early,
+      .register.stack-early tbody,
+      .register.stack-early tr,
+      .register.stack-early td { display: block; width: 100%; }
+      .register.stack-early tr { border-bottom: 1px solid #CBD2DB; padding: 0.625rem 0.75rem; }
+      .register.stack-early td {
+        display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: 0.75rem;
+        padding: 0.25rem 0; border: 0; align-items: center;
+      }
+      .register.stack-early td::before { content: attr(data-label); color: #556070; font-size: 0.875rem; }
+    }
+
+    @media (max-width: 639px) {
+      .register thead {
+        position: absolute; width: 1px; height: 1px; overflow: hidden;
+        clip: rect(0 0 0 0); white-space: nowrap;
+      }
+      .register, .register tbody, .register tr, .register td { display: block; width: 100%; }
+      .register tr { border-bottom: 1px solid #CBD2DB; padding: 0.625rem 0.75rem; }
+      .register td {
+        display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 0.75rem;
+        padding: 0.2rem 0; border: 0;
+      }
+      .register td::before { content: attr(data-label); color: #556070; font-size: 0.875rem; }
+      .register .num { text-align: left; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* This office prints things: the register must survive a black-and-white printer. */
+    @page { margin: 14mm; }
+    .print-only { display: none; }
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block; }
+      body { background: #fff !important; color: #000 !important; font-size: 10.5pt; }
+      a { color: #000 !important; text-decoration: none; }
+      main { max-width: none !important; padding: 0 !important; }
+      header, footer { border-color: #000 !important; }
+      .demo-banner {
+        position: static !important;
+        background: #fff !important;
+        color: #000 !important;
+        border: 2px solid #000 !important;
+      }
+      .register { border: 1px solid #000; }
+      .register thead { display: table-header-group; }
+      .register th {
+        position: static;
+        background: #fff !important;
+        color: #000 !important;
+        border-bottom: 1.5px solid #000;
+      }
+      .register td { border-bottom: 1px solid #777; }
+      .register tr { break-inside: avoid; }
+      .pill { border-color: #000 !important; color: #000 !important; }
+      h1, h2 { break-after: avoid; }
+      details summary::marker { content: ""; }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#F5F6F8] text-[#1B2330] antialiased">
+  <a href="#main" class="no-print sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:bg-white focus:px-4 focus:py-2 focus:text-[#1D4E89]">{% translate "Skip to main content" %}</a>
+
+  {% if demo_mode %}
+  <div id="demo-banner" class="demo-banner sticky top-0 z-50 border-b-2 border-dashed border-[#7A5A1F] bg-[#FFF1C2] text-[#3D2C0A]" role="note">
+    <p class="mx-auto max-w-5xl px-4 py-2 text-sm font-semibold sm:px-6">{% translate "Demonstration system — data shown is fictional and orders issued here are not official." %}</p>
+  </div>
+  {% endif %}
+
+  <header class="border-b border-[#CBD2DB] bg-white">
+    <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-8 gap-y-3 px-4 py-4 sm:px-6">
+      <a href="{% if user.is_authenticated %}{% url 'assignments:dashboard' %}{% else %}{% url 'core:index' %}{% endif %}" class="block">
+        <span class="block text-lg font-semibold leading-snug">{{ institution_name }}</span>
+        <span class="block text-sm text-[#556070]">{% translate "Committee assignment register" %}</span>
+      </a>
+      {% if user.is_authenticated %}
+        <div class="no-print flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#556070]">
+          {% if show_notifications_link %}<a class="link font-medium" href="{% url 'notifications:list' %}">{% translate "Notifications" %}{% if unread_notifications %} <span class="ml-1 inline-block rounded-full bg-[#1D4E89] px-2 text-xs font-semibold leading-5 text-white tabular-nums" aria-label="{% blocktranslate count counter=unread_notifications %}{{ counter }} unread{% plural %}{{ counter }} unread{% endblocktranslate %}">{{ unread_notifications }}</span>{% endif %}</a>{% endif %}
+          <span>{{ user.full_name|default:user.email }}{% if user.is_principal %} · {% translate "Principal" %}{% endif %}</span>
+          <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="link">{% translate "Sign out" %}</button>
+          </form>
+        </div>
+      {% elif request.resolver_match.view_name != "accounts:login" %}
+        <a href="{% url 'accounts:login' %}" class="no-print link text-sm font-medium">{% translate "Sign in" %}</a>
+      {% endif %}
+    </div>
+    {% if user.is_authenticated %}
+    <nav class="no-print border-t border-[#E3E7EC]" aria-label="{% translate 'Main' %}">
+      {% with current=request.resolver_match.view_name %}
+      <ul class="mx-auto flex max-w-5xl flex-wrap gap-x-6 px-4 sm:px-6">
+        <li><a class="nav-link" href="{% url 'assignments:dashboard' %}"{% if current == "assignments:dashboard" %} aria-current="page"{% endif %}>{% translate "Dashboard" %}</a></li>
+        <li><a class="nav-link" href="{% url 'assignments:directory' %}"{% if current == "assignments:directory" %} aria-current="page"{% endif %}>{% translate "Directory" %}</a></li>
+        <li><a class="nav-link" href="{% url 'committees:list' %}"{% if current == "committees:list" or current == "committees:detail" %} aria-current="page"{% endif %}>{% translate "Committees" %}</a></li>
+        {% if user.is_principal %}<li><a class="nav-link" href="{% url 'accounts:workload' %}"{% if current == "accounts:workload" %} aria-current="page"{% endif %}>{% translate "Workload" %}</a></li>{% endif %}
+        {% if user.is_principal %}
+        <li><a class="nav-link" href="{% url 'orders:assign' %}"{% if current == "orders:assign" %} aria-current="page"{% endif %}>{% translate "Assign committee" %}</a></li>
+        <li><a class="nav-link" href="{% url 'orders:register' %}"{% if current == "orders:register" or current == "orders:detail" %} aria-current="page"{% endif %}>{% translate "Orders" %}</a></li>
+        <li><a class="nav-link" href="{% url 'accounts:faculty_list' %}"{% if current == "accounts:faculty_list" or current == "accounts:faculty_detail" %} aria-current="page"{% endif %}>{% translate "Faculty" %}</a></li>
+        {% endif %}
+        <li><a class="nav-link" href="{% url 'accounts:profile' %}"{% if current == "accounts:profile" %} aria-current="page"{% endif %}>{% translate "Profile" %}</a></li>
+      </ul>
+      {% endwith %}
+    </nav>
+    {% endif %}
+  </header>
+
+  <div class="print-only" aria-hidden="true">
+    <p><strong>{{ institution_name }}</strong> — {% translate "Committee assignment register" %}</p>
+    <p>{% translate "Printed" %} {% now "j M Y" %}</p>
+  </div>
+
+  <main id="main" class="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
+    {% if messages %}
+    <div class="mb-6 space-y-2" aria-live="polite">
+      {% for message in messages %}
+      <p class="message{% if message.tags %} message-{{ message.tags }}{% endif %}">{{ message }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="mx-auto max-w-5xl border-t border-[#CBD2DB] px-4 py-6 text-sm text-[#556070] sm:px-6">
+    {{ institution_name }} · {% translate "Committee assignment management system" %}
+  </footer>
+
+  <script>
+    // Keep sticky table headers below the sticky demo banner, whatever its height.
+    (function () {
+      var banner = document.getElementById("demo-banner");
+      function setStickyTop() {
+        document.documentElement.style.setProperty("--sticky-top", (banner ? banner.offsetHeight : 0) + "px");
+      }
+      setStickyTop();
+      window.addEventListener("resize", setStickyTop);
+
+      // Print the contents of collapsed sections, then put them back as they were.
+      var reopened = [];
+      window.addEventListener("beforeprint", function () {
+        reopened = Array.prototype.filter.call(document.querySelectorAll("details"), function (element) {
+          return !element.open;
+        });
+        reopened.forEach(function (element) { element.open = true; });
+      });
+      window.addEventListener("afterprint", function () {
+        reopened.forEach(function (element) { element.open = false; });
+        reopened = [];
+      });
+    })();
+  </script>
+</body>
+</html>

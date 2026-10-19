@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ committee.name }}{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold leading-tight sm:text-3xl">{{ committee.name }}</h1>
+<p class="mt-1 text-[#556070]">{{ committee.code }}{% if not committee.is_active %} · {% translate "Inactive" %}{% endif %}</p>
+{% if committee.description %}<p class="mt-3 max-w-2xl text-[#3A4453]">{{ committee.description }}</p>{% endif %}
+
+{% if user.is_principal %}
+<div class="no-print mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+  <a class="btn-primary" href="{% url 'orders:assign' %}">{% translate "Assign committee" %}</a>
+  <a class="link" href="{% url 'committees:edit' committee.pk %}">{% translate "Edit committee and members" %}</a>
+</div>
+{% endif %}
+
+<section class="mt-8" aria-labelledby="held-heading">
+  <h2 id="held-heading" class="text-lg font-semibold">{% translate "Held now" %}</h2>
+  {% if held_by %}
+  <table class="register mt-3">
+    <thead>
+      <tr>
+        <th scope="col">{% translate "Role" %}</th>
+        <th scope="col">{% translate "Held by" %}</th>
+        <th scope="col">{% translate "Department" %}</th>
+        <th scope="col">{% translate "Since" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for assignment in held_by %}
+      <tr>
+        <td data-label="{% translate 'Role' %}">{{ assignment.get_role_display }}</td>
+        <td data-label="{% translate 'Held by' %}">{{ assignment.holder.salutation }} {{ assignment.holder_name }}</td>
+        <td data-label="{% translate 'Department' %}">{{ assignment.holder_detail|default:"—" }}</td>
+        <td data-label="{% translate 'Since' %}" class="tabular-nums">{{ assignment.start_date|date:"j M Y" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="mt-3 max-w-2xl border-l-4 border-[#CBD2DB] bg-white px-4 py-3 text-[#3A4453]">{% translate "Nobody holds this committee at the moment." %}</p>
+  {% endif %}
+</section>
+
+<p class="mt-8 text-sm text-[#556070]">{% blocktranslate count counter=order_count %}{{ counter }} order issued for this committee.{% plural %}{{ counter }} orders issued for this committee.{% endblocktranslate %}</p>
+{% endblock %}
