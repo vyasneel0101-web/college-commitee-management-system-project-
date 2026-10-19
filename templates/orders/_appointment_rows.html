@@ -1,0 +1,103 @@
+{% load i18n %}
+{% comment %}
+The table of people an order appoints. The row sequence is the sequence the
+order lists them in; the arrows move a person up or down. Expects `formset`.
+{% endcomment %}
+{{ formset.management_form }}
+<table class="register stack-early mt-3" id="appointments">
+  <thead>
+    <tr>
+      <th scope="col" class="w-12">{% translate "Sr." %}</th>
+      <th scope="col">{% translate "Person" %}</th>
+      <th scope="col">{% translate "Role" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in formset %}
+    <tr>
+      <td data-label="{% translate 'Sr.' %}" class="tabular-nums">{{ forloop.counter }}</td>
+      <td data-label="{% translate 'Person' %}">
+        <div class="person-pick">
+          {{ row.person }}
+          <button type="button" class="move-btn no-print" data-move="up" aria-label="{% translate 'Move up' %}" title="{% translate 'Move up' %}">&uarr;</button>
+          <button type="button" class="move-btn no-print" data-move="down" aria-label="{% translate 'Move down' %}" title="{% translate 'Move down' %}">&darr;</button>
+        </div>
+        {% if row.person.errors %}<p class="error-text mt-1 text-sm">{{ row.person.errors|join:" " }}</p>{% endif %}
+        {% for error in row.non_field_errors %}<p class="error-text mt-1 text-sm">{{ error }}</p>{% endfor %}
+      </td>
+      <td data-label="{% translate 'Role' %}">
+        {{ row.role }}
+        {% if row.role.errors %}<p class="error-text mt-1 text-sm">{{ row.role.errors|join:" " }}</p>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<button type="button" class="link no-print mt-3" id="add-person">{% translate "Add another person" %}</button>
+
+<template id="appointment-row">
+  <tr>
+    <td data-label="{% translate 'Sr.' %}" class="tabular-nums"></td>
+    <td data-label="{% translate 'Person' %}">
+      <div class="person-pick">
+        {{ formset.empty_form.person }}
+        <button type="button" class="move-btn no-print" data-move="up" aria-label="{% translate 'Move up' %}" title="{% translate 'Move up' %}">&uarr;</button>
+        <button type="button" class="move-btn no-print" data-move="down" aria-label="{% translate 'Move down' %}" title="{% translate 'Move down' %}">&darr;</button>
+      </div>
+    </td>
+    <td data-label="{% translate 'Role' %}">{{ formset.empty_form.role }}</td>
+  </tr>
+</template>
+
+<script>
+  // Adding rows and moving people up or down. The form works without this:
+  // three empty rows are always there, and the order follows the rows.
+  (function () {
+    var button = document.getElementById("add-person");
+    var table = document.querySelector("#appointments tbody");
+    var template = document.getElementById("appointment-row");
+    var total = document.getElementById("id_form-TOTAL_FORMS");
+    var maximum = document.getElementById("id_form-MAX_NUM_FORMS");
+    if (!button || !table || !template || !total) { return; }
+
+    // Rows are submitted as form-0, form-1, ... and the order lists people in
+    // that sequence, so after any move each row takes its position's number.
+    function renumber() {
+      var rows = table.querySelectorAll("tr");
+      rows.forEach(function (row, index) {
+        row.querySelector("td").textContent = index + 1;
+        row.querySelectorAll("select").forEach(function (field) {
+          field.name = field.name.replace(/^form-(\d+|__prefix__)-/, "form-" + index + "-");
+          field.id = field.id.replace(/^id_form-(\d+|__prefix__)-/, "id_form-" + index + "-");
+        });
+        row.querySelector('[data-move="up"]').disabled = index === 0;
+        row.querySelector('[data-move="down"]').disabled = index === rows.length - 1;
+      });
+    }
+
+    table.addEventListener("click", function (event) {
+      var arrow = event.target.closest("[data-move]");
+      if (!arrow) { return; }
+      var row = arrow.closest("tr");
+      if (arrow.dataset.move === "up" && row.previousElementSibling) {
+        table.insertBefore(row, row.previousElementSibling);
+      } else if (arrow.dataset.move === "down" && row.nextElementSibling) {
+        table.insertBefore(row.nextElementSibling, row);
+      }
+      renumber();
+      if (!arrow.disabled) { arrow.focus(); }
+      else { row.querySelector("select").focus(); }
+    });
+
+    button.addEventListener("click", function () {
+      var index = parseInt(total.value, 10);
+      if (maximum && index >= parseInt(maximum.value, 10)) { return; }
+      table.appendChild(template.content.cloneNode(true));
+      total.value = index + 1;
+      renumber();
+      table.lastElementChild.querySelector("select").focus();
+    });
+
+    renumber();
+  })();
+</script>

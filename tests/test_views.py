@@ -275,6 +275,38 @@ class TestAssignFlow:
             external_member.full_name,
         ]
 
+    def test_the_order_lists_people_in_the_sequence_the_principal_set(
+        self, principal_client, faculty, other_faculty, third_faculty, committee, year
+    ):
+        """The arrows only reorder rows; whatever row order arrives is the order's order,
+        even a Member placed above the Presiding Officer."""
+        principal_client.post(
+            reverse("orders:assign"),
+            assign_payload(
+                committee,
+                [
+                    (third_faculty, AssignmentRole.MEMBER),
+                    (faculty, AssignmentRole.PRESIDING_OFFICER),
+                    (other_faculty, AssignmentRole.MEMBER),
+                ],
+                step="issue",
+                expected_superseded="none",
+            ),
+        )
+        order = Order.objects.get()
+        expected = [third_faculty.full_name, faculty.full_name, other_faculty.full_name]
+        assert [row["name"] for row in order.render_context["member_list"]] == expected
+        page = principal_client.get(reverse("orders:detail", kwargs={"pk": order.pk})).content.decode()
+        positions = [page.index(name) for name in expected]
+        assert positions == sorted(positions), "the order page keeps the same sequence"
+
+    def test_every_person_row_has_move_arrows(self, principal_client, committee):
+        html = principal_client.get(reverse("orders:assign")).content.decode()
+        assert html.count('data-move="up" aria-label') == 4, "three rows plus the template row"
+        assert html.count('data-move="down" aria-label') == 4
+        edit = principal_client.get(reverse("committees:edit", kwargs={"pk": committee.pk})).content.decode()
+        assert edit.count('data-move="up" aria-label') == 4
+
     def test_two_people_in_charge_on_one_order_is_refused(
         self, principal_client, faculty, other_faculty, committee, year
     ):

@@ -27,34 +27,8 @@
   <fieldset>
     <legend class="font-medium">{% translate "People this order appoints" %}</legend>
     <p class="mt-1 text-sm text-[#556070]">{% translate "A committee has one Presiding Officer or one Nodal Officer, and any number of Members. Naming a new one supersedes the current one." %}</p>
-    {{ formset.management_form }}
-    <table class="register stack-early mt-3" id="appointments">
-      <thead>
-        <tr>
-          <th scope="col" class="w-12">{% translate "Sr." %}</th>
-          <th scope="col">{% translate "Person" %}</th>
-          <th scope="col">{% translate "Role" %}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in formset %}
-        <tr>
-          <td data-label="{% translate 'Sr.' %}" class="tabular-nums">{{ forloop.counter }}</td>
-          <td data-label="{% translate 'Person' %}">
-            {{ row.person }}
-            {% if row.person.errors %}<p class="error-text mt-1 text-sm">{{ row.person.errors|join:" " }}</p>{% endif %}
-            {% for error in row.non_field_errors %}<p class="error-text mt-1 text-sm">{{ error }}</p>{% endfor %}
-          </td>
-          <td data-label="{% translate 'Role' %}">
-            {{ row.role }}
-            {% if row.role.errors %}<p class="error-text mt-1 text-sm">{{ row.role.errors|join:" " }}</p>{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <button type="button" class="link no-print mt-3" id="add-person">{% translate "Add another person" %}</button>
-    <p class="mt-1 text-sm text-[#556070]">{% translate "Leave spare rows empty. Somebody from outside the college can only be appointed as External Member." %}</p>
+    {% include "orders/_appointment_rows.html" %}
+    <p class="mt-1 text-sm text-[#556070]">{% translate "Use the arrows to set the sequence the order lists people in. Leave spare rows empty. Somebody from outside the college can only be appointed as External Member." %}</p>
   </fieldset>
 
   <div class="max-w-xs">
@@ -80,38 +54,4 @@
   <button type="submit" class="btn-primary">{% translate "Preview order" %}</button>
 </form>
 
-<template id="appointment-row">
-  <tr>
-    <td data-label="{% translate 'Sr.' %}" class="tabular-nums"></td>
-    <td data-label="{% translate 'Person' %}">{{ formset.empty_form.person }}</td>
-    <td data-label="{% translate 'Role' %}">{{ formset.empty_form.role }}</td>
-  </tr>
-</template>
-
-<script>
-  // Add a row to the table of people. The form works without this: three
-  // empty rows are always available, and spare ones are ignored.
-  (function () {
-    var button = document.getElementById("add-person");
-    var table = document.querySelector("#appointments tbody");
-    var template = document.getElementById("appointment-row");
-    var total = document.getElementById("id_form-TOTAL_FORMS");
-    var maximum = document.getElementById("id_form-MAX_NUM_FORMS");
-    if (!button || !table || !template || !total) { return; }
-
-    button.addEventListener("click", function () {
-      var index = parseInt(total.value, 10);
-      if (maximum && index >= parseInt(maximum.value, 10)) { return; }
-      var row = template.content.cloneNode(true);
-      row.querySelectorAll("select").forEach(function (field) {
-        field.name = field.name.replace("__prefix__", index);
-        field.id = field.id.replace("__prefix__", index);
-      });
-      row.querySelector("td").textContent = index + 1;
-      table.appendChild(row);
-      total.value = index + 1;
-      table.lastElementChild.querySelector("select").focus();
-    });
-  })();
-</script>
 {% endblock %}

@@ -78,62 +78,13 @@
     <input type="hidden" name="references" value="">
     <input type="hidden" name="remarks" value="">
     <input type="hidden" name="step" value="preview">
-    {{ add_formset.management_form }}
-    <table class="register stack-early mt-3" id="appointments">
-      <thead>
-        <tr>
-          <th scope="col" class="w-12">{% translate "Sr." %}</th>
-          <th scope="col">{% translate "Person" %}</th>
-          <th scope="col">{% translate "Role" %}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in add_formset %}
-        <tr>
-          <td data-label="{% translate 'Sr.' %}" class="tabular-nums">{{ forloop.counter }}</td>
-          <td data-label="{% translate 'Person' %}">{{ row.person }}</td>
-          <td data-label="{% translate 'Role' %}">{{ row.role }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <button type="button" class="link no-print mt-3" id="add-person">{% translate "Add another person" %}</button>
+    {% include "orders/_appointment_rows.html" with formset=add_formset %}
     <div class="mt-4">
       <button type="submit" class="btn-primary">{% translate "Preview order" %}</button>
     </div>
-    <p class="mt-2 text-sm text-[#556070]">{% translate "Leave spare rows empty. One order appoints everyone you name, and you will see exactly what it does before anything is saved." %}</p>
+    <p class="mt-2 text-sm text-[#556070]">{% translate "Use the arrows to set the sequence the order lists people in. Leave spare rows empty. One order appoints everyone you name, and you will see exactly what it does before anything is saved." %}</p>
   </form>
 
-  <template id="appointment-row">
-    <tr>
-      <td data-label="{% translate 'Sr.' %}" class="tabular-nums"></td>
-      <td data-label="{% translate 'Person' %}">{{ add_formset.empty_form.person }}</td>
-      <td data-label="{% translate 'Role' %}">{{ add_formset.empty_form.role }}</td>
-    </tr>
-  </template>
-  <script>
-    (function () {
-      var button = document.getElementById("add-person");
-      var table = document.querySelector("#appointments tbody");
-      var template = document.getElementById("appointment-row");
-      var total = document.getElementById("id_form-TOTAL_FORMS");
-      var maximum = document.getElementById("id_form-MAX_NUM_FORMS");
-      if (!button || !table || !template || !total) { return; }
-      button.addEventListener("click", function () {
-        var index = parseInt(total.value, 10);
-        if (maximum && index >= parseInt(maximum.value, 10)) { return; }
-        var row = template.content.cloneNode(true);
-        row.querySelectorAll("select").forEach(function (field) {
-          field.name = field.name.replace("__prefix__", index);
-          field.id = field.id.replace("__prefix__", index);
-        });
-        row.querySelector("td").textContent = index + 1;
-        table.appendChild(row);
-        total.value = index + 1;
-        table.lastElementChild.querySelector("select").focus();
-      });
-    })();
-  </script>
 </section>
 {% endif %}
 {% endblock %}

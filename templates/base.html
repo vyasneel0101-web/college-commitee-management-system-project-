@@ -46,6 +46,17 @@
       min-width: 0; max-width: 100%;
     }
     .field[aria-invalid="true"] { border-color: #A3261B; }
+
+    /* A person picker with up/down buttons that set the order's sequence. */
+    .person-pick { display: flex; gap: 0.375rem; align-items: stretch; }
+    .person-pick > select { flex: 1 1 auto; }
+    .move-btn {
+      flex: 0 0 auto; width: 2.5rem; border: 1px solid #6B7584; border-radius: 0.25rem;
+      background: #fff; color: #1B2330; font-size: 1.125rem; line-height: 1;
+    }
+    .move-btn:hover:not(:disabled) { background: #EEF1F5; }
+    .move-btn:disabled { color: #A8B0BB; border-color: #CBD2DB; cursor: default; }
+    #appointments td:last-child select { min-width: 10rem; }
     .error-text { color: #A3261B; }
 
     .nav-link {
