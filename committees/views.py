@@ -10,6 +10,7 @@ from accounts.decorators import principal_required
 from assignments.models import Assignment, AssignmentRole
 from orders.forms import holder_choices
 
+from . import services
 from .forms import CommitteeForm
 from .models import Committee
 
@@ -53,8 +54,11 @@ def committee_edit(request, pk):
     committee = get_object_or_404(Committee, pk=pk)
     form = CommitteeForm(request.POST or None, instance=committee)
     if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, _("Committee saved."))
+        if form.changed_data:
+            services.update_committee(form=form, actor=request.user, request=request)
+            messages.success(request, _("Committee saved. Everyone on it has been notified."))
+        else:
+            messages.success(request, _("Nothing changed."))
         return redirect("committees:edit", pk=committee.pk)
     context = {
         "form": form,

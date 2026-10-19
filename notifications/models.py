@@ -29,11 +29,14 @@ class Notification(models.Model):
         on_delete=models.CASCADE,
         related_name="notifications",
     )
+    # Null when the change was an edit to the committee itself, not an order.
     order = models.ForeignKey(
         "orders.Order",
         verbose_name=_("order"),
         on_delete=models.CASCADE,
         related_name="notifications",
+        null=True,
+        blank=True,
     )
     message = models.CharField(_("message"), max_length=500)
     created_at = models.DateTimeField(_("created at"), auto_now_add=True)

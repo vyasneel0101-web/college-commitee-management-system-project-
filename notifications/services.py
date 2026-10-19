@@ -12,7 +12,7 @@ from assignments.models import Assignment
 from .models import Notification
 
 
-def notify_committee(*, committee, order, message, also=()):
+def notify_committee(*, committee, message, order=None, also=()):
     """
     Notify everyone currently on `committee`, plus `also` — the staff whose
     roles this change ended, who are no longer on it but need to know.
