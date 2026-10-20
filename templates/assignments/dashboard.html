@@ -36,6 +36,24 @@
 </nav>
 {% endif %}
 
+{% if updates %}
+<section class="mt-8" aria-labelledby="updates-heading">
+  <div class="flex flex-wrap items-baseline justify-between gap-2">
+    <h2 id="updates-heading" class="text-lg font-semibold">{% translate "New notifications" %}</h2>
+    <a class="link text-sm" href="{% url 'notifications:list' %}">{% translate "Read them all" %}</a>
+  </div>
+  <ul class="mt-3 border border-[#CBD2DB] bg-white">
+    {% for update in updates %}
+    <li class="notice notice-unread">
+      <span class="notice-badge">{% translate "New" %}</span>
+      <p class="notice-text">{{ update.message }}</p>
+      <p class="mt-1 text-sm text-[#556070]">{{ update.created_at|date:"j M Y, H:i" }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 <section class="mt-10" aria-labelledby="held-heading">
   <h2 id="held-heading" class="text-lg font-semibold">{% translate "Held now" %}</h2>
   {% if active %}
@@ -71,24 +89,6 @@
   </p>
   {% endif %}
 </section>
-
-{% if updates %}
-<section class="mt-8" aria-labelledby="updates-heading">
-  <div class="flex flex-wrap items-baseline justify-between gap-2">
-    <h2 id="updates-heading" class="text-lg font-semibold">{% translate "New notifications" %}</h2>
-    <a class="link text-sm" href="{% url 'notifications:list' %}">{% translate "Read them all" %}</a>
-  </div>
-  <ul class="mt-3 border border-[#CBD2DB] bg-white">
-    {% for update in updates %}
-    <li class="notice notice-unread">
-      <span class="notice-badge">{% translate "New" %}</span>
-      <p class="notice-text">{{ update.message }}</p>
-      <p class="mt-1 text-sm text-[#556070]">{{ update.created_at|date:"j M Y, H:i" }}</p>
-    </li>
-    {% endfor %}
-  </ul>
-</section>
-{% endif %}
 
 <section class="mt-12" aria-labelledby="past-heading">
   {% if past %}

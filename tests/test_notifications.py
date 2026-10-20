@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 from django.urls import reverse
+from django.utils.html import escape
 
 from assignments.models import AssignmentRole
 from notifications.models import Notification
@@ -135,6 +136,7 @@ def test_the_dashboard_shows_unread_notifications_highlighted(
     issue_order(faculty=faculty, committee=committee, role=MEMBER)
     html = faculty_client.get(reverse("assignments:dashboard")).content.decode()
     assert "New notifications" in html
+    assert html.index('id="updates-heading"') < html.index('id="held-heading"')
     assert 'class="notice notice-unread"' in html
     assert f"{faculty.full_name} appointed Member" in html
 
@@ -146,6 +148,9 @@ def test_read_notifications_leave_the_dashboard_but_stay_in_the_tab(
     faculty_client.get(reverse("notifications:list"))  # reading them
     dashboard = faculty_client.get(reverse("assignments:dashboard")).content.decode()
     assert "New notifications" not in dashboard
+    assert 'id="updates-heading"' not in dashboard
+    assert 'id="held-heading"' in dashboard
+    assert escape(committee.name) in dashboard
     assert f"{faculty.full_name} appointed Member" not in dashboard
     tab = faculty_client.get(reverse("notifications:list")).content.decode()
     assert f"{faculty.full_name} appointed Member" in tab

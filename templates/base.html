@@ -37,7 +37,6 @@
       {% if user.is_authenticated %}
       <div class="account-tools">
         {% if show_notifications_link %}<a class="notification-link" href="{% url 'notifications:list' %}">{% include "ui/icon.html" with name="bell" %}<span class="notification-label">{% translate "Notifications" %}</span>{% if unread_notifications %}<span class="count-badge" aria-label="{% blocktranslate count counter=unread_notifications %}{{ counter }} unread{% plural %}{{ counter }} unread{% endblocktranslate %}">{{ unread_notifications }}</span>{% endif %}</a>{% endif %}
-        <a class="account-summary" href="{% url 'accounts:profile' %}"><span class="avatar" aria-hidden="true">{{ user.full_name|default:user.email|first }}</span><span><strong>{{ user.full_name|default:user.email }}</strong><small>{% if user.is_principal %}{% translate "Principal" %}{% else %}{{ user.get_role_display }}{% endif %}</small></span></a>
         <form method="post" action="{% url 'accounts:logout' %}" class="signout-form">{% csrf_token %}<button type="submit" class="signout-button">{% include "ui/icon.html" with name="logout" %}<span>{% translate "Sign out" %}</span></button></form>
       </div>
       {% elif request.resolver_match.view_name != "accounts:login" %}<a href="{% url 'accounts:login' %}" class="btn-primary">{% translate "Sign in" %}</a>{% endif %}
