@@ -1,0 +1,23 @@
+{% load i18n %}
+{# Saved snapshots preserve the people named even when cancellation restores a membership. #}
+{% if order.order_type == "RELINQUISHMENT" %}
+  {% for person in order.render_context.removed %}
+  <span class="block">{{ person.name }} <span class="text-sm text-[#556070]">{{ person.role }}</span></span>
+  {% empty %}
+    {% if order.render_context.faculty_name %}
+    {{ order.render_context.faculty_name }} <span class="text-sm text-[#556070]">{{ order.render_context.assignment_role }}</span>
+    {% else %}
+      {% for assignment in order.ended_assignments.all %}
+      <span class="block">{{ assignment.holder_name }} <span class="text-sm text-[#556070]">{{ assignment.get_role_display }}</span></span>
+      {% empty %}<span class="text-sm text-[#556070]">{% translate "See order details" %}</span>{% endfor %}
+    {% endif %}
+  {% endfor %}
+{% elif order.order_type == "CORRIGENDUM" %}
+  {% for name in order.render_context.withdrawn %}<span class="block">{{ name }} <span class="text-sm text-[#556070]">{% translate "Withdrawn" %}</span></span>{% endfor %}
+  {% for name in order.render_context.restored %}<span class="block">{{ name }} <span class="text-sm text-[#556070]">{% translate "Restored" %}</span></span>{% endfor %}
+  {% if not order.render_context.withdrawn and not order.render_context.restored %}<span class="text-sm text-[#556070]">{% translate "See order details" %}</span>{% endif %}
+{% else %}
+  {% for assignment in order.created_assignments.all %}
+  <span class="block">{{ assignment.holder_name }} <span class="text-sm text-[#556070]">{{ assignment.get_role_display }}</span></span>
+  {% empty %}<span class="text-sm text-[#556070]">{% translate "See order details" %}</span>{% endfor %}
+{% endif %}

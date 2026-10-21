@@ -26,7 +26,7 @@
       <th scope="col">{% translate "Date" %}</th>
       <th scope="col">{% translate "Committee" %}</th>
       <th scope="col">{% translate "Issued to" %}</th>
-      <th scope="col">{% translate "Assignment now" %}</th>
+      <th scope="col">{% translate "Assignment / order effect" %}</th>
       <th scope="col" class="no-print">{% translate "Document" %}</th>
     </tr>
   </thead>
@@ -35,15 +35,22 @@
     <tr>
       <td data-label="{% translate 'Order' %}" class="tabular-nums"><div class="cell-value">
         <a class="link font-medium" href="{% url 'orders:detail' order.pk %}">{{ order.order_no }}</a>
+        {% if order.order_type != "ASSIGNMENT" %}<span class="block text-sm text-[#556070]">{{ order.get_order_type_display }}</span>{% endif %}
         {% if order.is_cancelled %}<span class="pill pill-history mt-1">{% translate "Cancelled" %}</span>{% endif %}
       </div></td>
       <td data-label="{% translate 'Date' %}" class="tabular-nums"><div class="cell-value">{{ order.order_date|date:"j M Y" }}</div></td>
       <td data-label="{% translate 'Committee' %}"><div class="cell-value">{{ order.committee.name }}</div></td>
       <td data-label="{% translate 'Issued to' %}"><div class="cell-value">
-        {% for assignment in order.created_assignments.all %}{{ assignment.holder_name }} <span class="text-sm text-[#556070]">{{ assignment.get_role_display }}</span>{% if not forloop.last %}<br>{% endif %}{% endfor %}
+        {% include "orders/_register_people.html" %}
       </div></td>
-      <td data-label="{% translate 'Assignment now' %}"><div class="cell-value">
-        {% for assignment in order.created_assignments.all %}{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}{% endfor %}
+      <td data-label="{% translate 'Assignment / order effect' %}"><div class="cell-value">
+        {% if order.order_type == "RELINQUISHMENT" %}
+          <span class="pill pill-history">{% if order.is_cancelled %}{% translate "Removal cancelled" %}{% else %}{% translate "Relinquished" %}{% endif %}</span>
+        {% elif order.order_type == "CORRIGENDUM" %}
+          <span class="pill pill-history">{% translate "Correction issued" %}</span>
+        {% else %}
+          {% for assignment in order.created_assignments.all %}{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}{% empty %}<span class="text-sm text-[#556070]">{% translate "See order details" %}</span>{% endfor %}
+        {% endif %}
       </div></td>
       <td data-label="{% translate 'Document' %}" class="no-print"><div class="cell-value">
         <a class="link" href="{% url 'orders:download' order.pk %}">{% translate "Download" %}</a>

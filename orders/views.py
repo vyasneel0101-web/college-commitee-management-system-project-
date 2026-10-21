@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Prefetch
 from django.http import FileResponse
 from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -118,7 +119,14 @@ def assign(request):
 def register(request):
     """Every order ever issued, newest first. Principal only during the sprint."""
     orders = Order.objects.select_related("committee", "academic_year").prefetch_related(
-        "created_assignments__faculty"
+        Prefetch(
+            "created_assignments",
+            queryset=Assignment.objects.select_related("faculty", "external_member").order_by("pk"),
+        ),
+        Prefetch(
+            "ended_assignments",
+            queryset=Assignment.objects.select_related("faculty", "external_member").order_by("pk"),
+        ),
     )
     return render(request, "orders/register.html", {"orders": list(orders)})
 
