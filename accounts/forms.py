@@ -25,6 +25,14 @@ class ProfileForm(forms.ModelForm):
         fields = ["mobile"]
 
 
+class FacultySearchForm(forms.Form):
+    q = forms.CharField(
+        label=_("Search by faculty, department or committee"),
+        max_length=100,
+        required=False,
+    )
+
+
 class FacultyForm(forms.ModelForm):
     """
     Used by the Principal to create and correct staff records.

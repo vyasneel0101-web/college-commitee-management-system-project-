@@ -1,16 +1,17 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_http_methods, require_safe
 
 from assignments.models import Assignment
+from committees.models import Committee
 
 from . import services
 from .decorators import principal_required
-from .forms import DeactivateFacultyForm, FacultyForm, ProfileForm
-from .models import User
+from .forms import DeactivateFacultyForm, FacultyForm, FacultySearchForm, ProfileForm
+from .models import Department, User
 
 
 @principal_required
@@ -50,8 +51,27 @@ def profile(request):
 @require_safe
 def faculty_list(request):
     """Every staff record, including deactivated ones, with their committee load."""
+    form = FacultySearchForm(request.GET)
+    query = form.cleaned_data["q"] if form.is_valid() else ""
     people = User.objects.faculty_with_counts(include_inactive=True)
-    return render(request, "accounts/faculty_list.html", {"people": list(people)})
+    if query:
+        exact_code = (
+            Department.objects.filter(code__iexact=query).exists()
+            or Committee.objects.filter(code__iexact=query).exists()
+        )
+        committee_match = Q(committee__code__iexact=query)
+        person_match = Q(department__code__iexact=query)
+        if not exact_code:
+            committee_match |= Q(committee__name__icontains=query)
+            person_match |= Q(full_name__icontains=query) | Q(department__name__icontains=query)
+        # A subquery avoids joining matching memberships into the count above:
+        # a faculty member appears once and keeps their total active load.
+        holders = Assignment.objects.active().filter(committee_match).values("faculty_id")
+        people = people.filter(person_match | Q(pk__in=holders))
+    return render(
+        request, "accounts/faculty_list.html",
+        {"people": list(people), "form": form, "query": query},
+    )
 
 
 @principal_required

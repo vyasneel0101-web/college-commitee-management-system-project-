@@ -12,6 +12,30 @@
   <a class="btn-primary no-print" href="{% url 'accounts:faculty_create' %}">{% translate "Add faculty" %}</a>
 </div>
 
+<form method="get" action="{% url 'accounts:faculty_list' %}" role="search" class="no-print mt-6 flex max-w-3xl flex-wrap items-end gap-3">
+  <div class="min-w-0 grow basis-64">
+    <label for="id_faculty_q" class="block font-medium">{{ form.q.label }}</label>
+    <input id="id_faculty_q" name="q" type="search" class="field mt-1" maxlength="100"
+           value="{{ form.q.value|default_if_none:'' }}"
+           aria-describedby="faculty-search-help{% if form.q.errors %} faculty-search-error{% endif %}"
+           {% if form.q.errors %}aria-invalid="true"{% endif %}>
+    {% if form.q.errors %}<p id="faculty-search-error" class="error-text mt-1 text-sm">{{ form.q.errors|join:" " }}</p>{% endif %}
+  </div>
+  <button type="submit" class="btn-primary">{% translate "Search" %}</button>
+  {% if query or form.q.errors %}<a class="link py-2.5" href="{% url 'accounts:faculty_list' %}">{% translate "Clear search" %}</a>{% endif %}
+</form>
+<p id="faculty-search-help" class="mt-2 text-sm text-[#556070]">{% translate "Enter part of a name, a department name or code, or a current committee name or code. Exact codes take priority." %}</p>
+{% if query %}
+<p class="mt-3 text-sm text-[#556070]" role="status">
+  {% blocktranslate count counter=people|length trimmed %}
+    {{ counter }} staff member matches “{{ query }}”.
+  {% plural %}
+    {{ counter }} staff members match “{{ query }}”.
+  {% endblocktranslate %}
+</p>
+{% endif %}
+
+{% if people %}
 <table class="register mt-6">
   <thead>
     <tr>
@@ -36,4 +60,9 @@
     {% endfor %}
   </tbody>
 </table>
+{% elif query %}
+<p class="message mt-6" role="status">{% blocktranslate %}No staff match “{{ query }}”. Try another name, department or current committee.{% endblocktranslate %}</p>
+{% else %}
+<p class="message mt-6">{% translate "No staff records yet. Use Add faculty to create the first one." %}</p>
+{% endif %}
 {% endblock %}
