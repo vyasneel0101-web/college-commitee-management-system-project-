@@ -24,7 +24,7 @@
   <button type="submit" class="btn-primary">{% translate "Search" %}</button>
   {% if query or form.q.errors %}<a class="link py-2.5" href="{% url 'accounts:faculty_list' %}">{% translate "Clear search" %}</a>{% endif %}
 </form>
-<p id="faculty-search-help" class="mt-2 text-sm text-[#556070]">{% translate "Enter part of a name, a department name or code, or a current committee name or code. Exact codes take priority." %}</p>
+<p id="faculty-search-help" class="mt-2 text-sm text-[#556070]">{% translate "Enter all or part of a faculty member's name." %}</p>
 {% if query %}
 <p class="mt-3 text-sm text-[#556070]" role="status">
   {% blocktranslate count counter=people|length trimmed %}
@@ -61,7 +61,7 @@
   </tbody>
 </table>
 {% elif query %}
-<p class="message mt-6" role="status">{% blocktranslate %}No staff match “{{ query }}”. Try another name, department or current committee.{% endblocktranslate %}</p>
+<p class="message mt-6" role="status">{% blocktranslate %}No staff match “{{ query }}”. Try another faculty name.{% endblocktranslate %}</p>
 {% else %}
 <p class="message mt-6">{% translate "No staff records yet. Use Add faculty to create the first one." %}</p>
 {% endif %}

@@ -27,7 +27,7 @@ class ProfileForm(forms.ModelForm):
 
 class FacultySearchForm(forms.Form):
     q = forms.CharField(
-        label=_("Search by faculty, department or committee"),
+        label=_("Search by faculty name"),
         max_length=100,
         required=False,
     )

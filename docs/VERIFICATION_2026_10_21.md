@@ -1,5 +1,23 @@
 # Orders register and Faculty search verification
 
+## Latest approved refinement
+
+The user subsequently requested **Faculty name search only**. Department and
+committee matching/code priority were removed, and their tests now assert that
+those fields do not match. Partial names, whitespace/case handling, counts and
+Principal-only access remain covered.
+
+The register now groups each recipient's saved name/salutation, role and
+designation/department or organisation. Each name and role is paired with its own
+status/effect tag. Correction details come from the corrected order when recorded;
+otherwise the UI explicitly states that staff details were not recorded, rather
+than guessing an identity. Saved documents and contexts are never modified.
+
+This refinement passed **256 tests**, Django and migration checks, and live
+localhost HTTP checks. Source packages below describe the earlier verification
+run; the current search specification is name-only. No fresh browser visual check
+was possible because browser automation still could not start.
+
 ## Changes
 
 - The order register previously displayed only `created_assignments`. A removal

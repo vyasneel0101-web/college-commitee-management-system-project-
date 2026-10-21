@@ -19,7 +19,7 @@
 </div>
 
 {% if orders %}
-<table class="register mt-6">
+<table class="register order-register mt-6">
   <thead>
     <tr>
       <th scope="col">{% translate "Order" %}</th>
@@ -44,13 +44,14 @@
         {% include "orders/_register_people.html" %}
       </div></td>
       <td data-label="{% translate 'Assignment / order effect' %}"><div class="cell-value">
-        {% if order.order_type == "RELINQUISHMENT" %}
-          <span class="pill pill-history">{% if order.is_cancelled %}{% translate "Removal cancelled" %}{% else %}{% translate "Relinquished" %}{% endif %}</span>
-        {% elif order.order_type == "CORRIGENDUM" %}
-          <span class="pill pill-history">{% translate "Correction issued" %}</span>
-        {% else %}
-          {% for assignment in order.created_assignments.all %}{% include "assignments/_status_pill.html" with status=assignment.status label=assignment.get_status_display %}{% empty %}<span class="text-sm text-[#556070]">{% translate "See order details" %}</span>{% endfor %}
-        {% endif %}
+        {% if order.order_type == "CORRIGENDUM" %}<p class="mb-3"><span class="pill pill-correction">{% translate "Correction issued" %}</span></p>{% endif %}
+        {% for person in order.register_people %}
+        <div class="register-recipient">
+          <span class="recipient-name">{{ person.name }}</span>
+          {% if person.role %}<span class="recipient-detail">{{ person.role }}</span>{% endif %}
+          <span class="pill {{ person.tag }}">{{ person.label }}</span>
+        </div>
+        {% empty %}<span class="text-sm text-[#556070]">{% translate "See order details" %}</span>{% endfor %}
       </div></td>
       <td data-label="{% translate 'Document' %}" class="no-print"><div class="cell-value">
         <a class="link" href="{% url 'orders:download' order.pk %}">{% translate "Download" %}</a>

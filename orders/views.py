@@ -25,6 +25,7 @@ from .forms import (
     RelinquishForm,
 )
 from .models import Order
+from .presentation import register_recipients
 
 DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
@@ -118,17 +119,19 @@ def assign(request):
 @require_safe
 def register(request):
     """Every order ever issued, newest first. Principal only during the sprint."""
-    orders = Order.objects.select_related("committee", "academic_year").prefetch_related(
-        Prefetch(
-            "created_assignments",
-            queryset=Assignment.objects.select_related("faculty", "external_member").order_by("pk"),
-        ),
-        Prefetch(
-            "ended_assignments",
-            queryset=Assignment.objects.select_related("faculty", "external_member").order_by("pk"),
-        ),
+    assignments = Assignment.objects.select_related("faculty__department", "external_member").order_by("pk")
+    recipients = (
+        Prefetch("created_assignments", queryset=assignments),
+        Prefetch("ended_assignments", queryset=assignments),
     )
-    return render(request, "orders/register.html", {"orders": list(orders)})
+    orders = Order.objects.select_related("committee", "academic_year").prefetch_related(
+        *recipients,
+        Prefetch("cancels", queryset=Order.objects.prefetch_related(*recipients)),
+    )
+    orders = list(orders)
+    for order in orders:
+        order.register_people = register_recipients(order)
+    return render(request, "orders/register.html", {"orders": orders})
 
 
 @login_required
