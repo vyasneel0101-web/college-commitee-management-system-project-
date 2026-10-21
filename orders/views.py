@@ -25,7 +25,7 @@ from .forms import (
     RelinquishForm,
 )
 from .models import Order
-from .presentation import register_recipients
+from .presentation import register_change_notes, register_recipients
 
 DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
@@ -124,13 +124,14 @@ def register(request):
         Prefetch("created_assignments", queryset=assignments),
         Prefetch("ended_assignments", queryset=assignments),
     )
-    orders = Order.objects.select_related("committee", "academic_year").prefetch_related(
+    orders = Order.objects.select_related("committee", "academic_year", "cancelled_by_order").prefetch_related(
         *recipients,
         Prefetch("cancels", queryset=Order.objects.prefetch_related(*recipients)),
     )
     orders = list(orders)
     for order in orders:
         order.register_people = register_recipients(order)
+        order.register_notes = register_change_notes(order)
     return render(request, "orders/register.html", {"orders": orders})
 
 

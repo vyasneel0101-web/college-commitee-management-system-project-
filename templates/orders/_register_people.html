@@ -1,8 +1,16 @@
 {% load i18n %}
 {% for person in order.register_people %}
 <div class="register-recipient">
-  <strong class="recipient-name">{{ person.salutation }} {{ person.name }}</strong>
+  <p class="recipient-name">{{ person.summary }}</p>
+  <span class="pill {{ person.action_tag }}">{{ person.action_label }}</span>
   {% if person.role %}<span class="pill pill-role">{{ person.role }}</span>{% endif %}
   {% if person.detail %}<span class="recipient-detail">{{ person.detail }}</span>{% else %}<span class="recipient-detail">{% translate "Staff details not recorded in this order." %}</span>{% endif %}
 </div>
 {% empty %}<span class="text-sm text-[#556070]">{% translate "See order details" %}</span>{% endfor %}
+{% for note in order.register_notes %}
+<div class="register-change-note">
+  <span class="pill {{ note.tag }}">{{ note.label }}</span>
+  <p>{{ note.message }}</p>
+  {% if note.reason %}<p class="recipient-detail">{% translate "Reason:" %} {{ note.reason }}</p>{% endif %}
+</div>
+{% endfor %}

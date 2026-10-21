@@ -1,6 +1,36 @@
 # Orders register and Faculty search verification
 
-## Latest approved refinement
+## Latest refinement: readable order actions
+
+The Issued to column now explains what the numbered order did in a complete
+sentence, for example: "Dr. Test Faculty 10 removed as Presiding Officer from
+bhavix team." Appointed, Removed, Withdrawn and Restored tags accompany each
+message. Saved role and staff/organisation details remain below it.
+
+Replacement orders also name the superseded holder. Corrections explain which
+order they cancelled and the recorded reason. A subsequently cancelled order
+keeps its original action message and shows a separate cancellation note.
+Assignment status remains separate: an original appointment still says appointed
+even when its assignment was relinquished later. Missing historical roles are
+not inferred from a name. Faculty search remains name-only.
+
+- Complete suite: **262 passed**, using
+  `.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider --basetemp=.venv/order-summary-tests-20261021`.
+  The default Windows pytest temporary directory was inaccessible; a verified
+  fresh directory under the ignored virtual environment resolved that test-setup
+  error. Use a new temporary directory name for a future run.
+- Django system check and migration consistency check passed.
+- Live localhost HTTP login and register rendering verified the example above.
+  All 34 order records, 36 assignment records and 34 stored document checksums
+  matched before and after the live check.
+- Focused tests cover each action, supersession, cancellation/restoration,
+  historical versus current status, saved committee names and escaped user text.
+  Existing permission, query-count and Faculty-search checks remain green.
+- Scope: read-only presentation helpers, list-query preloading, recipient markup
+  and two scoped CSS rules. No services, schema, stored contexts, documents or
+  permissions changed. Browser visual verification was not repeated.
+
+## Earlier name-search and recipient-detail refinement
 
 The user subsequently requested **Faculty name search only**. Department and
 committee matching/code priority were removed, and their tests now assert that

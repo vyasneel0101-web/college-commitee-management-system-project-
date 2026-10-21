@@ -206,3 +206,115 @@ def test_correction_recipient_details_do_not_add_queries_per_order(
     with CaptureQueriesContext(connection) as larger:
         assert escape(other_faculty.full_name) in principal_client.get(reverse("orders:register")).content.decode()
     assert len(larger) == len(small)
+
+
+def test_removal_message_states_who_was_removed_from_each_role(
+    principal_client, principal, faculty, external_member, committee, issue_order
+):
+    order = issue_order(
+        committee=committee,
+        appointments=[(faculty, AssignmentRole.MEMBER), (external_member, AssignmentRole.EXTERNAL_MEMBER)],
+    )
+    removal = issue_relinquishment_order(
+        assignments=list(order.created_assignments.all()),
+        order_date=date(2026, 8, 1), issued_by=principal,
+    )
+    recipients = cell_blocks(register_row(principal_client, removal), "Issued to")
+    for holder, role in ((faculty, "Member"), (external_member, "External Member")):
+        message = f"{holder.salutation} {holder.full_name} removed as {role} from {committee.name}."
+        block = next(block for block in recipients if escape(message) in block)
+        assert '<span class="pill pill-cancelled">Removed</span>' in block
+
+
+def test_original_appointment_message_does_not_become_a_removal_message(
+    principal_client, principal, faculty, committee, issue_order
+):
+    order = issue_order(faculty=faculty, committee=committee)
+    issue_relinquishment_order(
+        assignment=order.created_assignments.get(),
+        order_date=date(2026, 8, 1), issued_by=principal,
+    )
+    row = register_row(principal_client, order)
+    recipient = cell_blocks(row, "Issued to")[0]
+    expected = f"{faculty.salutation} {faculty.full_name} appointed as Presiding Officer to {committee.name}."
+    assert escape(expected) in recipient
+    assert '<span class="pill pill-correction">Appointed</span>' in recipient
+    assert "removed as" not in recipient
+    assert "Relinquished" in cell_blocks(row, "Assignment / order effect")[0]
+
+
+def test_replacement_message_also_names_the_superseded_holder(
+    principal_client, faculty, other_faculty, committee, issue_order
+):
+    issue_order(faculty=faculty, committee=committee)
+    replacement = issue_order(
+        faculty=other_faculty, committee=committee, role=AssignmentRole.NODAL_OFFICER,
+        order_date=date(2026, 8, 1),
+    )
+    row = register_row(principal_client, replacement)
+    message = f"{other_faculty.salutation} {other_faculty.full_name} appointed as Nodal Officer to {committee.name}."
+    assert escape(message) in cell_blocks(row, "Issued to")[0]
+    assert escape(f"This order superseded the previous assignment of {faculty.full_name}.") in row
+    assert '<span class="pill pill-history">Superseded</span>' in row
+
+
+def test_correction_explains_withdrawal_restoration_and_original_order(
+    principal_client, principal, faculty, other_faculty, committee, issue_order
+):
+    issue_order(faculty=faculty, committee=committee)
+    replacement = issue_order(
+        faculty=other_faculty, committee=committee, order_date=date(2026, 8, 1)
+    )
+    correction = cancel_order(order=replacement, reason="Wrong person selected.", issued_by=principal)
+    row = register_row(principal_client, correction)
+    recipients = cell_blocks(row, "Issued to")
+    withdrawn = next(block for block in recipients if escape(other_faculty.full_name) in block)
+    message = f"The appointment of {other_faculty.salutation} {other_faculty.full_name} as Presiding Officer to {committee.name} was withdrawn."
+    assert escape(message) in withdrawn
+    assert '<span class="pill pill-cancelled">Withdrawn</span>' in withdrawn
+    restored = next(block for block in recipients if escape(faculty.full_name) in block)
+    assert escape(f"{faculty.full_name} restored to their previous assignment in {committee.name}.") in restored
+    assert '<span class="pill pill-active">Restored</span>' in restored
+    # Older corrections record only the restored name: never invent a role.
+    assert "as Presiding Officer" not in restored
+    assert f"Order {replacement.order_no} was cancelled by this correction." in row
+    assert "Reason: Wrong person selected." in row
+    original = register_row(principal_client, replacement)
+    assert f"This order was later cancelled by order {correction.order_no}." in original
+    assert escape(f"This order superseded the previous assignment of {faculty.full_name}.") in original
+
+
+def test_cancelling_a_removal_explains_restored_role_but_keeps_original_action(
+    principal_client, principal, faculty, committee, issue_order
+):
+    assignment = issue_order(faculty=faculty, committee=committee).created_assignments.get()
+    removal = issue_relinquishment_order(
+        assignment=assignment, order_date=date(2026, 8, 1), issued_by=principal
+    )
+    correction = cancel_order(order=removal, reason="Removed by mistake.", issued_by=principal)
+    restored = cell_blocks(register_row(principal_client, correction), "Issued to")[0]
+    message = f"{faculty.salutation} {faculty.full_name} restored as Presiding Officer to {committee.name}."
+    assert escape(message) in restored
+    row = register_row(principal_client, removal)
+    assert escape(f"{faculty.salutation} {faculty.full_name} removed as Presiding Officer from {committee.name}.") in row
+    assert f"This order was later cancelled by order {correction.order_no}." in row
+    assert "Removal cancelled" in cell_blocks(row, "Assignment / order effect")[0]
+
+
+def test_order_messages_use_snapshots_and_escape_user_text(
+    principal_client, principal, faculty, committee, issue_order
+):
+    faculty.full_name = 'Test Faculty <script>alert("x")</script>'
+    faculty.save(update_fields=["full_name"])
+    order = issue_order(faculty=faculty, committee=committee)
+    original_committee = committee.name
+    committee.name = "Test Renamed Committee"
+    committee.save(update_fields=["name"])
+    recipient = cell_blocks(register_row(principal_client, order), "Issued to")[0]
+    assert escape(f"{faculty.salutation} {faculty.full_name} appointed as Presiding Officer to {original_committee}.") in recipient
+    assert committee.name not in recipient
+    assert "<script>" not in recipient
+    correction = cancel_order(order=order, reason='<img src=x onerror="alert(1)">', issued_by=principal)
+    row = register_row(principal_client, correction)
+    assert escape(correction.render_context["cancellation_reason"]) in row
+    assert "<img src=x" not in row
